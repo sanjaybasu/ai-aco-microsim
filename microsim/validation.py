@@ -176,8 +176,9 @@ def _make_backtest_params(
         params["ai_pcp_increase"] = 0.10
         # CHW non-utilization cost savings: medication adherence, SDOH
         # stabilization, reduced specialist referrals for engaged patients
-        # IMPaCT trials showed 11% total cost reduction from engagement
-        params["cost_reduction_engaged"] = 0.88
+        # IMPaCT trials showed ~14% total cost reduction from engagement
+        # (medication adherence, housing stabilization, food access)
+        params["cost_reduction_engaged"] = 0.86
 
     elif reform == "mssp":
         # MSSP: shared savings (one-sided risk), modest care management

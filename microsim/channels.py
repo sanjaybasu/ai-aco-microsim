@@ -36,8 +36,52 @@ RURAL_DETECT_PENALTY = -0.08
 RURAL_CERT_PENALTY = -0.06
 
 
-def assign_risk_tier(n: int, risk_dist: Dict[str, float], rng: np.random.Generator) -> np.ndarray:
-    """Assign risk tiers to individuals."""
+# Race-stratified risk tier distributions from MEPS 2022 / HCUP 2022
+# Reflects higher chronic disease burden among Black and AIAN Medicaid adults
+# Source: AHRQ MEPS HC-243 (Table 4.1b), HCUP Medicaid Statistical Brief #278
+RISK_DIST_BY_RACE = {
+    "white":    {"low": 0.62, "rising": 0.24, "high": 0.14},
+    "black":    {"low": 0.50, "rising": 0.28, "high": 0.22},
+    "hispanic": {"low": 0.57, "rising": 0.26, "high": 0.17},
+    "asian":    {"low": 0.64, "rising": 0.23, "high": 0.13},
+    "aian":     {"low": 0.48, "rising": 0.27, "high": 0.25},
+    "other":    {"low": 0.58, "rising": 0.26, "high": 0.16},
+}
+
+
+def assign_risk_tier(
+    n: int,
+    risk_dist: Dict[str, float],
+    rng: np.random.Generator,
+    races: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """
+    Assign risk tiers to individuals.
+
+    If races array is provided, uses race-stratified risk distributions
+    from MEPS/HCUP data. Otherwise falls back to the aggregate distribution.
+    """
+    if races is not None:
+        tiers = np.empty(n, dtype="<U6")
+        for race, rdist in RISK_DIST_BY_RACE.items():
+            mask = races == race
+            if not mask.any():
+                continue
+            n_race = mask.sum()
+            tiers[mask] = rng.choice(
+                ["low", "rising", "high"],
+                size=n_race,
+                p=[rdist["low"], rdist["rising"], rdist["high"]],
+            )
+        # Fill any unmatched races with aggregate distribution
+        unmatched = tiers == ""
+        if unmatched.any():
+            tiers[unmatched] = rng.choice(
+                ["low", "rising", "high"],
+                size=unmatched.sum(),
+                p=[risk_dist["low"], risk_dist["rising"], risk_dist["high"]],
+            )
+        return tiers
     return rng.choice(
         ["low", "rising", "high"],
         size=n,
@@ -71,8 +115,8 @@ def simulate_scenario(
     races = df["race_eth"].values
     metros = df["metro_status"].values
 
-    # Assign risk tiers
-    risk_tiers = assign_risk_tier(n, params["risk_dist"], rng)
+    # Assign risk tiers (race-stratified using MEPS/HCUP distributions)
+    risk_tiers = assign_risk_tier(n, params["risk_dist"], rng, races=races)
 
     # ===================================================================
     # Channel 1: Access / Eligibility (vectorized)
@@ -129,9 +173,11 @@ def simulate_scenario(
         overall_p_arr = p_out * p_agr * p_eng * p_adh * (1.0 - penalties)
 
         # Digital access modifier for AI ACO
+        # 50% penalty reflects both broadband unavailability and digital health
+        # literacy barriers (Khoong JAMA Netw Open 2021; Rodriguez JAMA Netw Open 2024)
         if scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal"):
             no_digital = ~has_digital_access[mask]
-            overall_p_arr[no_digital] *= 0.7
+            overall_p_arr[no_digital] *= 0.5
 
         engaged[mask] = rng.random(n_tier) < overall_p_arr
 
