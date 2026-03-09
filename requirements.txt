@@ -1,0 +1,16 @@
+# AI ACO Microsimulation — Python Dependencies
+# Tested with Python 3.11+
+
+# Core scientific computing
+numpy>=1.24
+pandas>=2.0
+scipy>=1.11
+pyarrow>=14.0     # parquet I/O
+
+# Visualization
+matplotlib>=3.8
+
+# LLM API (for multi-agent debate only)
+anthropic>=0.39   # required only for debate step; not needed for microsimulation
+
+# Standard library (no install needed): json, logging, argparse, pathlib, dataclasses, typing
