@@ -1,7 +1,5 @@
 # ai-aco-microsim
 
-Code for: "Can AI Improve Medicaid Care? Multi-Agent System Design with Microsimulation Evaluation" (Basu S, Batniji R. NEJM AI, submitted 2026).
-
 ## Overview
 
 This repository contains code to:
