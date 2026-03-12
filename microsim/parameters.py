@@ -217,6 +217,15 @@ class AIACOPSAParameters:
         self.ai_admin_rate = stats.beta(3, 97)  # ~3% (of premium)
 
         # -----------------------------------------------------------
+        # Provider reimbursement → network adequacy
+        # -----------------------------------------------------------
+        # Provider rate as % of Medicare RBRVS
+        # Source: Consensus design = 125% PCP, 110% hospital
+        # Current Medicaid average ≈ 75% (MACPAC MACStats 2024)
+        # Affects referral completion for the non-AI care pathway
+        self.provider_rate_pct_medicare = 125.0  # default; overridable per scenario
+
+        # -----------------------------------------------------------
         # Financial model
         # -----------------------------------------------------------
         # Risk distribution (fraction of population)
@@ -323,4 +332,6 @@ class AIACOPSAParameters:
                 for race, dist in self.engagement_racial_penalty.items()
             },
             "ai_equity_gap_reduction": np.clip(self.ai_equity_gap_reduction.rvs(), 0.10, 0.50),
+            "provider_rate_pct_medicare": self.provider_rate_pct_medicare,
+            "ai_encounter_share": 0.58,  # consensus: 58% of encounters handled by AI
         }

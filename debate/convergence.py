@@ -246,6 +246,187 @@ class ConvergenceTracker:
 
         return divergent
 
+    # -------------------------------------------------------------------
+    # Delphi convergence metrics
+    # -------------------------------------------------------------------
+
+    def compute_delphi_metrics(
+        self, parsed_params: Dict[str, ParameterSet]
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compute Delphi-style summary statistics for each domain.
+
+        Returns dict of domain_id -> {
+            sub_param_key -> {
+                "type": "numeric" | "categorical",
+                # numeric fields:
+                "median": float, "q1": float, "q3": float, "iqr": float,
+                "values_by_agent": {agent_id: value},
+                # categorical fields:
+                "mode": str, "mode_pct": float, "vote_distribution": {val: count},
+                "votes_by_agent": {agent_id: value},
+            }
+        }
+        """
+        from collections import Counter
+
+        metrics: Dict[str, Dict[str, Any]] = {}
+
+        for domain_id in self.domain_ids:
+            domain_metrics: Dict[str, Any] = {}
+
+            # Collect sub-parameter keys for this domain
+            all_sub_keys: set = set()
+            for agent_params in parsed_params.values():
+                for key in agent_params.values:
+                    if key.startswith(f"{domain_id}."):
+                        all_sub_keys.add(key.split(".", 1)[1])
+
+            for sub_key in sorted(all_sub_keys):
+                numeric_by_agent: Dict[str, float] = {}
+                categorical_by_agent: Dict[str, str] = {}
+
+                for agent_id, agent_params in parsed_params.items():
+                    pv = agent_params.get(domain_id, sub_key)
+                    if pv is None:
+                        continue
+                    try:
+                        numeric_by_agent[agent_id] = float(pv.value)
+                    except (TypeError, ValueError):
+                        categorical_by_agent[agent_id] = str(pv.value)
+
+                if len(numeric_by_agent) >= 2:
+                    vals = list(numeric_by_agent.values())
+                    q1 = float(np.percentile(vals, 25))
+                    q3 = float(np.percentile(vals, 75))
+                    domain_metrics[sub_key] = {
+                        "type": "numeric",
+                        "median": float(np.median(vals)),
+                        "q1": q1,
+                        "q3": q3,
+                        "iqr": q3 - q1,
+                        "values_by_agent": numeric_by_agent,
+                    }
+                elif len(categorical_by_agent) >= 2:
+                    counts = Counter(categorical_by_agent.values())
+                    mode_val, mode_count = counts.most_common(1)[0]
+                    total = len(categorical_by_agent)
+                    domain_metrics[sub_key] = {
+                        "type": "categorical",
+                        "mode": mode_val,
+                        "mode_pct": mode_count / total,
+                        "vote_distribution": dict(counts),
+                        "votes_by_agent": categorical_by_agent,
+                    }
+
+            metrics[domain_id] = domain_metrics
+
+        return metrics
+
+    def compute_delphi_metrics_with_previous(
+        self,
+        current_params: Dict[str, ParameterSet],
+        previous_params: Optional[Dict[str, ParameterSet]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compute Delphi metrics and annotate with change-from-previous info.
+
+        If previous_params is provided, each numeric sub-param also gets:
+            "prev_iqr": float
+            "iqr_decreased": bool
+        And each categorical sub-param also gets:
+            "prev_mode_pct": float
+        """
+        metrics = self.compute_delphi_metrics(current_params)
+
+        if previous_params is not None:
+            prev_metrics = self.compute_delphi_metrics(previous_params)
+            for domain_id, domain_m in metrics.items():
+                prev_domain = prev_metrics.get(domain_id, {})
+                for sub_key, sub_m in domain_m.items():
+                    prev_sub = prev_domain.get(sub_key)
+                    if prev_sub is None:
+                        continue
+                    if sub_m["type"] == "numeric" and prev_sub["type"] == "numeric":
+                        sub_m["prev_iqr"] = prev_sub["iqr"]
+                        sub_m["iqr_decreased"] = sub_m["iqr"] <= prev_sub["iqr"]
+                    elif sub_m["type"] == "categorical" and prev_sub["type"] == "categorical":
+                        sub_m["prev_mode_pct"] = prev_sub["mode_pct"]
+
+        return metrics
+
+    def is_delphi_converged(
+        self,
+        current_metrics: Dict[str, Dict[str, Any]],
+        round_num: int,
+        categorical_agreement_threshold: float = 0.75,
+    ) -> bool:
+        """
+        Check Delphi convergence.
+
+        A domain is converged when:
+        - Numeric sub-params: IQR decreased or stable vs previous round
+          for >= stability_rounds consecutive rounds
+        - Categorical sub-params: >= categorical_agreement_threshold agreement
+
+        Overall: >= domains_required domains converged.
+        """
+        if round_num < self.stability_rounds:
+            return False
+
+        converged_count = 0
+        for domain_id, domain_m in current_metrics.items():
+            domain_converged = self._is_domain_delphi_converged(
+                domain_m, categorical_agreement_threshold
+            )
+            if domain_converged:
+                converged_count += 1
+
+        return converged_count >= self.domains_required
+
+    def get_delphi_converged_domains(
+        self,
+        current_metrics: Dict[str, Dict[str, Any]],
+        categorical_agreement_threshold: float = 0.75,
+    ) -> List[str]:
+        """Return list of domain_ids that meet Delphi convergence criteria."""
+        converged = []
+        for domain_id, domain_m in current_metrics.items():
+            if self._is_domain_delphi_converged(
+                domain_m, categorical_agreement_threshold
+            ):
+                converged.append(domain_id)
+        return converged
+
+    def _is_domain_delphi_converged(
+        self,
+        domain_metrics: Dict[str, Any],
+        categorical_agreement_threshold: float = 0.75,
+    ) -> bool:
+        """Check if a single domain meets Delphi convergence criteria."""
+        if not domain_metrics:
+            return False
+
+        sub_converged = 0
+        sub_total = 0
+
+        for sub_key, sub_m in domain_metrics.items():
+            sub_total += 1
+            if sub_m["type"] == "numeric":
+                # Converged if IQR decreased or stable (requires prev_iqr annotation)
+                if "iqr_decreased" in sub_m:
+                    if sub_m["iqr_decreased"]:
+                        sub_converged += 1
+                else:
+                    # First round with metrics — not converged yet
+                    pass
+            elif sub_m["type"] == "categorical":
+                if sub_m["mode_pct"] >= categorical_agreement_threshold:
+                    sub_converged += 1
+
+        # Domain converged if majority of sub-params converged
+        return sub_total > 0 and sub_converged >= (sub_total / 2)
+
     def parameter_distance(self, params_a: ParameterSet, params_b: ParameterSet) -> float:
         """
         Compute distance between two agents' parameter sets.
