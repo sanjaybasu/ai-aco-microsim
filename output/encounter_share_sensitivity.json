@@ -1,0 +1,92 @@
+[
+  {
+    "ai_encounter_share": 0.2,
+    "rate_pct_medicare": 75,
+    "hosp_reduction": 12.6,
+    "ed_reduction": 32.1,
+    "pmpm_savings": 54.1,
+    "hedis_improvement": 12.2,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.2,
+    "rate_pct_medicare": 125,
+    "hosp_reduction": 14.6,
+    "ed_reduction": 38.2,
+    "pmpm_savings": 41.0,
+    "hedis_improvement": 15.6,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.35,
+    "rate_pct_medicare": 75,
+    "hosp_reduction": 12.9,
+    "ed_reduction": 33.3,
+    "pmpm_savings": 54.4,
+    "hedis_improvement": 12.8,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.35,
+    "rate_pct_medicare": 125,
+    "hosp_reduction": 14.6,
+    "ed_reduction": 38.2,
+    "pmpm_savings": 41.0,
+    "hedis_improvement": 15.6,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.45,
+    "rate_pct_medicare": 75,
+    "hosp_reduction": 13.2,
+    "ed_reduction": 33.8,
+    "pmpm_savings": 54.7,
+    "hedis_improvement": 13.2,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.45,
+    "rate_pct_medicare": 125,
+    "hosp_reduction": 14.6,
+    "ed_reduction": 38.2,
+    "pmpm_savings": 41.0,
+    "hedis_improvement": 15.6,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.58,
+    "rate_pct_medicare": 75,
+    "hosp_reduction": 13.5,
+    "ed_reduction": 35.0,
+    "pmpm_savings": 55.1,
+    "hedis_improvement": 13.8,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.58,
+    "rate_pct_medicare": 125,
+    "hosp_reduction": 14.6,
+    "ed_reduction": 38.2,
+    "pmpm_savings": 41.0,
+    "hedis_improvement": 15.6,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.75,
+    "rate_pct_medicare": 75,
+    "hosp_reduction": 14.0,
+    "ed_reduction": 36.4,
+    "pmpm_savings": 55.6,
+    "hedis_improvement": 14.5,
+    "prob_net_savings": 1.0
+  },
+  {
+    "ai_encounter_share": 0.75,
+    "rate_pct_medicare": 125,
+    "hosp_reduction": 14.6,
+    "ed_reduction": 38.2,
+    "pmpm_savings": 41.0,
+    "hedis_improvement": 15.6,
+    "prob_net_savings": 1.0
+  }
+]

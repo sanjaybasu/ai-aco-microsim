@@ -201,6 +201,83 @@ def _extract_json(text: str) -> Optional[Dict]:
     return None
 
 
+# Explicit mapping from common LLM domain name variations to canonical domain_ids.
+# Keys should be lowercase with underscores. Order matters for prefix matching.
+_DOMAIN_ALIAS_MAP: Dict[str, str] = {
+    # Canonical IDs (identity mappings)
+    "clinical_model": "clinical_model",
+    "payment_structure": "payment_structure",
+    "provider_rates": "provider_rates",
+    "org_structure": "org_structure",
+    "regulatory_pathway": "regulatory_pathway",
+    "quality_framework": "quality_framework",
+    "ai_architecture": "ai_architecture",
+    "human_oversight": "human_oversight",
+    "sdoh_integration": "sdoh_integration",
+    "rural_urban": "rural_urban",
+    "anti_monopoly": "anti_monopoly",
+    "ethical_governance": "ethical_governance",
+    # Numbered variants (LLMs love adding numbers)
+    "1_clinical_model": "clinical_model",
+    "1_clinical_delivery_model": "clinical_model",
+    "2_payment_structure": "payment_structure",
+    "3_provider_rates": "provider_rates",
+    "3_provider_payment_rates": "provider_rates",
+    "4_organizational_structure": "org_structure",
+    "4_org_structure": "org_structure",
+    "5_regulatory_pathway": "regulatory_pathway",
+    "6_quality_framework": "quality_framework",
+    "6_quality_measurement_framework": "quality_framework",
+    "7_ai_architecture": "ai_architecture",
+    "7_ai_clinical_decision_architecture": "ai_architecture",
+    "8_human_oversight": "human_oversight",
+    "8_human_oversight_model": "human_oversight",
+    "9_sdoh_integration": "sdoh_integration",
+    "9_social_determinants_of_health_integration": "sdoh_integration",
+    "10_rural_urban": "rural_urban",
+    "10_rural_urban_design_variants": "rural_urban",
+    "11_anti_monopoly": "anti_monopoly",
+    "11_anti_monopoly_and_market_design": "anti_monopoly",
+    "11_anti_monopoly_market_design": "anti_monopoly",
+    "12_ethical_governance": "ethical_governance",
+    "12_ethical_governance_and_accountability": "ethical_governance",
+    "12_ethical_governance_accountability": "ethical_governance",
+    # Common name variations without numbers
+    "clinical_delivery_model": "clinical_model",
+    "clinical_delivery": "clinical_model",
+    "payment": "payment_structure",
+    "provider_payment": "provider_rates",
+    "provider_payment_rates": "provider_rates",
+    "organizational_structure": "org_structure",
+    "organization_structure": "org_structure",
+    "organization": "org_structure",
+    "regulatory": "regulatory_pathway",
+    "regulation": "regulatory_pathway",
+    "quality": "quality_framework",
+    "quality_measurement": "quality_framework",
+    "quality_measurement_framework": "quality_framework",
+    "ai_clinical_decision_architecture": "ai_architecture",
+    "ai_clinical_architecture": "ai_architecture",
+    "ai_decision_architecture": "ai_architecture",
+    "human_oversight_model": "human_oversight",
+    "oversight": "human_oversight",
+    "sdoh": "sdoh_integration",
+    "social_determinants": "sdoh_integration",
+    "social_determinants_of_health": "sdoh_integration",
+    "social_determinants_of_health_integration": "sdoh_integration",
+    "rural_urban_design": "rural_urban",
+    "rural_urban_design_variants": "rural_urban",
+    "rural_urban_variants": "rural_urban",
+    "anti_monopoly_and_market_design": "anti_monopoly",
+    "anti_monopoly_market_design": "anti_monopoly",
+    "market_design": "anti_monopoly",
+    "ethical_governance_and_accountability": "ethical_governance",
+    "ethical_governance_accountability": "ethical_governance",
+    "ethics": "ethical_governance",
+    "governance": "ethical_governance",
+}
+
+
 def _normalize_domain_key(key: str, valid_domains: List[str]) -> Optional[str]:
     """Fuzzy-match a key from LLM output to a valid domain ID."""
     key_lower = key.lower().strip().replace(" ", "_").replace("-", "_")
@@ -210,9 +287,19 @@ def _normalize_domain_key(key: str, valid_domains: List[str]) -> Optional[str]:
         return key_lower
 
     # Strip numeric prefix (e.g., "1. Clinical Model" -> "clinical_model")
-    stripped = re.sub(r"^\d+[\.\)]\s*", "", key_lower)
+    stripped = re.sub(r"^\d+[\.\)\-_:]+\s*", "", key_lower).strip().replace(" ", "_")
     if stripped in valid_domains:
         return stripped
+
+    # Check explicit alias map (handles numbered variants and name variations)
+    if key_lower in _DOMAIN_ALIAS_MAP:
+        mapped = _DOMAIN_ALIAS_MAP[key_lower]
+        if mapped in valid_domains:
+            return mapped
+    if stripped in _DOMAIN_ALIAS_MAP:
+        mapped = _DOMAIN_ALIAS_MAP[stripped]
+        if mapped in valid_domains:
+            return mapped
 
     # Partial match
     for domain in valid_domains:

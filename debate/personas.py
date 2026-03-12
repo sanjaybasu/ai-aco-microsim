@@ -596,6 +596,65 @@ Respond with your REVISED JSON proposal. Include a "changes" array listing each 
 """
 
 
+def build_delphi_feedback_prompt(
+    persona: AgentPersona,
+    round_num: int,
+    group_summary_text: str,
+    domain_descriptions: str,
+) -> str:
+    """
+    Build the Delphi re-rating prompt for rounds 1-K.
+
+    Replaces the critique+revision cycle with a single Delphi feedback step:
+    agents see the group summary (median, IQR, agreement %) with their own
+    position highlighted, then re-rate all 12 domains.
+    """
+    return f"""{persona.system_prompt}
+
+You are {persona.name} ({persona.role}). This is Round {round_num} of a Modified Delphi process.
+
+PREVIOUS GROUP SUMMARY:
+{group_summary_text}
+
+INSTRUCTIONS:
+1. Review the group summary for each domain and each sub-parameter.
+2. For parameters where your value was INSIDE the IQR (or matched the majority vote):
+   you may keep your value or adjust it based on group feedback.
+3. For parameters where your value was OUTSIDE the IQR (or you were in the minority):
+   you were an OUTLIER. You may maintain your position, but you MUST provide an
+   "outlier_justification" field explaining why your value is better than the group median/mode.
+4. Revise your parameter values where you are persuaded by the group distribution.
+5. Maintain internal consistency across all 12 domains.
+
+You MUST provide values for ALL 12 domains and ALL sub-parameters within each domain.
+Do NOT omit any domain or sub-parameter. If you are unsure, keep your previous value.
+
+Remember your hard constraints:
+{chr(10).join(f'  - {c}' for c in persona.hard_constraints)}
+
+PARAMETER DOMAINS (for reference — provide ALL sub-parameters listed):
+{domain_descriptions}
+
+FORMAT: Respond with a JSON object. For each domain, provide sub-parameters as:
+{{
+    "domain_name": {{
+        "sub_parameter_name": {{
+            "value": <numeric or categorical value>,
+            "unit": "<unit of measurement>",
+            "justification": "<evidence-based rationale with citation>",
+            "uncertainty_range": [<lower_bound>, <upper_bound>],
+            "key_assumption": "<most important assumption>"
+        }}
+    }}
+}}
+
+If you are maintaining an outlier position (outside the IQR or minority vote), add:
+    "outlier_justification": "<why your value is better than the group consensus>"
+
+Respond ONLY with the JSON object — no prose before or after.
+"""
+
+
 def build_minority_report_prompt(
     persona: AgentPersona,
     final_consensus: str,

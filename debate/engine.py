@@ -23,6 +23,7 @@ from .personas import (
     build_critique_prompt,
     build_revision_prompt,
     build_minority_report_prompt,
+    build_delphi_feedback_prompt,
 )
 from .domains import build_domains, get_domain_descriptions
 from .convergence import ConvergenceTracker
@@ -348,6 +349,277 @@ class DebateEngine:
         self._save_results(results)
 
         return results
+
+    # -------------------------------------------------------------------
+    # Delphi mode orchestration
+    # -------------------------------------------------------------------
+
+    def run_delphi(
+        self,
+        max_rounds: int = 12,
+        resume_from_round: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run a Modified Delphi process (replaces critique-revision with summary feedback).
+
+        Flow:
+            1. Round 0: Independent proposals (same as run())
+            2. Rounds 1-K:
+                a. Compute group summary (median, IQR, agreement %)
+                b. Feed summary back to each agent with their position highlighted
+                c. Each agent re-rates (full structured proposal)
+                d. Check Delphi convergence
+            3. Generate consensus and minority reports
+
+        Args:
+            max_rounds: Maximum number of Delphi rounds (default 12).
+            resume_from_round: If set, load rounds 0..N from disk and resume
+                from round N+1. None = start fresh.
+
+        Returns:
+            Dict with consensus_design, minority_reports, convergence_history, etc.
+        """
+        logger.info("Starting AI ACO Modified Delphi Process")
+        logger.info(f"  Agents: {len(self.personas)}")
+        logger.info(f"  Domains: {len(self.domains)}")
+        logger.info(f"  Max rounds: {max_rounds}")
+
+        start_round = 0
+
+        # Resume from existing data if requested
+        if resume_from_round is not None:
+            self._load_rounds_from_disk(resume_from_round)
+            start_round = resume_from_round + 1
+            logger.info(f"  Resumed from round {resume_from_round}, starting at round {start_round}")
+
+        # Round 0: Independent proposals (if not resuming past it)
+        if start_round == 0:
+            self.run_round_zero()
+            start_round = 1
+
+        # Rounds 1-K: Delphi feedback + re-rating
+        for r in range(start_round, max_rounds + 1):
+            round_data = self._run_delphi_round(r)
+
+            # Check Delphi convergence
+            prev_params = self.rounds[-2].parsed_parameters if len(self.rounds) >= 2 else None
+            delphi_metrics = self.tracker.compute_delphi_metrics_with_previous(
+                round_data.parsed_parameters, prev_params
+            )
+            converged_domains = self.tracker.get_delphi_converged_domains(delphi_metrics)
+
+            if self.tracker.is_delphi_converged(delphi_metrics, r):
+                logger.info(
+                    f"  DELPHI CONVERGED at round {r} "
+                    f"({len(converged_domains)}/{len(self.domains)} domains)"
+                )
+                break
+            else:
+                logger.info(
+                    f"  Delphi round {r}: {len(converged_domains)}/{len(self.domains)} domains converged"
+                )
+        else:
+            logger.info(f"  Reached max rounds ({max_rounds}) without full Delphi convergence")
+
+        # Generate consensus and minority reports
+        final_round = self.rounds[-1]
+        consensus = self.tracker.compute_consensus(final_round.parsed_parameters)
+        minority_reports = self.generate_minority_reports()
+
+        # Build convergence history (CV-based for compatibility with existing analysis code)
+        convergence_history = {
+            domain_id: [r.convergence_scores.get(domain_id, float("nan")) for r in self.rounds]
+            for domain_id in self.domains
+        }
+
+        results = {
+            "consensus_design": consensus,
+            "minority_reports": {k: v for k, v in minority_reports.items()},
+            "convergence_history": convergence_history,
+            "total_rounds": len(self.rounds),
+            "converged": len(self.rounds) > 1 and self.tracker.is_delphi_converged(
+                self.tracker.compute_delphi_metrics_with_previous(
+                    final_round.parsed_parameters,
+                    self.rounds[-2].parsed_parameters if len(self.rounds) >= 2 else None,
+                ),
+                len(self.rounds) - 1,
+            ),
+            "final_converged_domains": final_round.converged_domains,
+            "method": "modified_delphi",
+        }
+        self._save_results(results)
+
+        return results
+
+    def _run_delphi_round(self, round_num: int) -> DebateRound:
+        """
+        Single Delphi round: compute group summary, feed back, collect re-ratings.
+        """
+        logger.info(f"=== DELPHI ROUND {round_num}: Feedback & Re-rate ===")
+        prev = self.rounds[-1]
+        agent_ids = list(self.personas.keys())
+
+        # Step 1: Compute group summary from previous round
+        delphi_metrics = self.tracker.compute_delphi_metrics(prev.parsed_parameters)
+
+        # Step 2: Each agent re-rates with group feedback
+        proposals = {}
+        parsed = {}
+        for agent_id in agent_ids:
+            persona = self.personas[agent_id]
+
+            # Build personalized group summary (highlights this agent's position)
+            summary_text = self._compute_group_summary(
+                delphi_metrics, agent_id, prev.parsed_parameters.get(agent_id)
+            )
+
+            logger.info(f"  {agent_id} ({persona.name}) re-rating with Delphi feedback...")
+            prompt = build_delphi_feedback_prompt(
+                persona,
+                round_num,
+                summary_text,
+                self.domain_descriptions,
+            )
+            raw = self._call_llm(persona.system_prompt, prompt)
+            proposals[agent_id] = raw
+            parsed[agent_id] = extract_parameters(raw, list(self.domains.keys()))
+            n_params = len(parsed[agent_id].values)
+            n_errors = len(parsed[agent_id].parse_errors)
+            logger.info(f"    Parsed {n_params} parameters ({n_errors} errors)")
+
+        # Step 3: Compute CV scores (for backward compatibility and tracking)
+        cv_scores = self.tracker.compute_round_cv(parsed)
+        converged = self.tracker.get_converged_domains(cv_scores)
+
+        round_data = DebateRound(
+            round_num=round_num,
+            proposals=proposals,
+            critiques={},  # No critiques in Delphi mode
+            parsed_parameters=parsed,
+            convergence_scores=cv_scores,
+            converged_domains=converged,
+            timestamp=time.time(),
+        )
+        self.rounds.append(round_data)
+        self._save_round(round_data)
+
+        logger.info(f"  CV-converged domains: {len(converged)}/12")
+        return round_data
+
+    def _compute_group_summary(
+        self,
+        delphi_metrics: Dict[str, Dict[str, Any]],
+        agent_id: str,
+        agent_params: Optional[ParameterSet],
+    ) -> str:
+        """
+        Format Delphi group summary for a specific agent.
+
+        For each domain and sub-parameter, shows:
+        - Numeric: median, IQR [Q1-Q3], agent's value, whether inside/outside IQR
+        - Categorical: majority vote (pct), alternative votes, agent's vote
+        """
+        lines: List[str] = []
+
+        for domain_id, domain_name_obj in self.domains.items():
+            domain_metrics = delphi_metrics.get(domain_id, {})
+            if not domain_metrics:
+                continue
+
+            lines.append(f"\n### {domain_id} ({domain_name_obj.name})")
+
+            for sub_key, sub_m in domain_metrics.items():
+                if sub_m["type"] == "numeric":
+                    median = sub_m["median"]
+                    q1 = sub_m["q1"]
+                    q3 = sub_m["q3"]
+
+                    # Get this agent's value
+                    agent_val = sub_m["values_by_agent"].get(agent_id)
+                    if agent_val is not None:
+                        inside = q1 <= agent_val <= q3
+                        position = "INSIDE IQR" if inside else "*** OUTSIDE IQR ***"
+                        lines.append(
+                            f"  {sub_key}: Median={median:.2f}, IQR=[{q1:.2f} - {q3:.2f}] | "
+                            f"Your value: {agent_val:.2f} ({position})"
+                        )
+                    else:
+                        lines.append(
+                            f"  {sub_key}: Median={median:.2f}, IQR=[{q1:.2f} - {q3:.2f}] | "
+                            f"Your value: NOT PROVIDED"
+                        )
+
+                elif sub_m["type"] == "categorical":
+                    mode = sub_m["mode"]
+                    mode_pct = sub_m["mode_pct"] * 100
+                    vote_dist = sub_m["vote_distribution"]
+
+                    # Format vote distribution excluding mode
+                    alt_votes = [
+                        f"{v}: {c}" for v, c in vote_dist.items() if v != mode
+                    ]
+                    alt_str = ", ".join(alt_votes) if alt_votes else "none"
+
+                    # Get this agent's vote
+                    agent_vote = sub_m["votes_by_agent"].get(agent_id)
+                    if agent_vote is not None:
+                        matches = agent_vote == mode
+                        position = "MATCHES MAJORITY" if matches else "*** MINORITY VOTE ***"
+                        lines.append(
+                            f"  {sub_key}: Majority={mode} ({mode_pct:.0f}%), "
+                            f"alternatives=[{alt_str}] | "
+                            f"Your vote: {agent_vote} ({position})"
+                        )
+                    else:
+                        lines.append(
+                            f"  {sub_key}: Majority={mode} ({mode_pct:.0f}%), "
+                            f"alternatives=[{alt_str}] | "
+                            f"Your vote: NOT PROVIDED"
+                        )
+
+        return "\n".join(lines)
+
+    def _load_rounds_from_disk(self, up_to_round: int):
+        """
+        Load saved round data from disk for resume support.
+
+        Loads round JSON files and reconstructs DebateRound objects.
+        Re-parses proposals to rebuild parsed_parameters.
+        """
+        outdir = Path(self.config.output_dir)
+        domain_ids = list(self.domains.keys())
+
+        for r in range(0, up_to_round + 1):
+            path = outdir / f"round_{r}.json"
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"Cannot resume: round file {path} not found"
+                )
+
+            with open(path, "r") as f:
+                data = json.load(f)
+
+            # Re-parse proposals to get ParameterSet objects
+            parsed = {}
+            proposals = data.get("proposals", {})
+            for agent_id, raw in proposals.items():
+                parsed[agent_id] = extract_parameters(raw, domain_ids)
+
+            # Reconstruct CV scores from tracker (need to add to history)
+            cv_scores = self.tracker.compute_round_cv(parsed)
+            converged = self.tracker.get_converged_domains(cv_scores)
+
+            round_data = DebateRound(
+                round_num=data["round_num"],
+                proposals=proposals,
+                critiques=data.get("critiques", {}),
+                parsed_parameters=parsed,
+                convergence_scores=cv_scores,
+                converged_domains=converged,
+                timestamp=data.get("timestamp", 0.0),
+            )
+            self.rounds.append(round_data)
+            logger.info(f"  Loaded round {r} from {path} ({len(parsed)} agents)")
 
     # -------------------------------------------------------------------
     # Helpers

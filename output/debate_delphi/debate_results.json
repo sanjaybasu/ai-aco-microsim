@@ -1,0 +1,1280 @@
+{
+  "consensus_design": {
+    "clinical_model": {
+      "ai_encounter_share": {
+        "value": 57.5,
+        "type": "numeric",
+        "agent_spread": [
+          45.0,
+          65.0
+        ],
+        "uncertainty_range": [
+          45.0,
+          65.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          65.0,
+          60.0,
+          45.0,
+          55.0,
+          45.0,
+          65.0,
+          45.0,
+          65.0
+        ],
+        "justifications": [
+          "[economist] COMPASS multi-agent systems demonstrate 70% diagnostic accuracy for common primary care conditions (Singhal et al., 2023). Conservative 65% allows for learning curve and regulatory caution.",
+          "[regulator] Adjusted toward group median while maintaining regulatory feasibility. CMS Innovation Center ACO models typically require 50-70% primary care delivery by designated providers (42 CFR 425.112)",
+          "[patient_advocate] Maintaining balance between AI efficiency and human oversight - 45% allows AI to handle routine care while ensuring majority of encounters have human involvement for vulnerable Medicaid population"
+        ]
+      },
+      "escalation_threshold": {
+        "value": "high_acuity_only",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "high_acuity_only": 7,
+          "any_uncertainty": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Mechanism design requires clear decision rules to minimize moral hazard. High acuity threshold (ESI 1-2) creates incentive-compatible escalation (Myerson, 1991).",
+          "[regulator] Aligns with Medicare ACO quality measures requiring physician involvement for complex conditions (CMS-9143-F, 2020)",
+          "[patient_advocate] Medicaid patients often have complex psychosocial factors requiring human clinical judgment - any diagnostic uncertainty should trigger physician review per patient safety standards"
+        ]
+      },
+      "physical_exam_pathway": {
+        "value": "fqhc_referral",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "fqhc_referral": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] FQHCs receive enhanced FQHC PPS payments and have legal mandate to serve Medicaid patients. Leverages existing infrastructure per Section 330 PHSA.",
+          "[regulator] FQHCs have statutory Medicaid participation requirements under Section 1902(bb) and existing infrastructure",
+          "[patient_advocate] FQHCs already serve Medicaid population and provide comprehensive primary care with sliding fee scales"
+        ]
+      },
+      "encounter_modality_mix": {
+        "value": 32.5,
+        "type": "numeric",
+        "agent_spread": [
+          25.0,
+          35.0
+        ],
+        "uncertainty_range": [
+          22.5,
+          40.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          35.0,
+          35.0,
+          25.0,
+          35.0,
+          40.0,
+          25.0,
+          25.0,
+          30.0
+        ],
+        "justifications": [
+          "[economist] Medicaid populations have higher smartphone penetration (87%) than broadband (65%) per Pew 2023. Asynchronous text-based care reduces access barriers and administrative costs.",
+          "[regulator] Consistent with CMS telehealth utilization data showing 30-40% synchronous encounters in virtual-first models (CMS Innovation Center, 2023)",
+          "[patient_advocate] Low synchronous percentage accommodates work schedules, childcare constraints, and digital literacy barriers common among Medicaid beneficiaries"
+        ]
+      },
+      "ai_diagnostic_scope": {
+        "value": "common_chronic",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "common_chronic": 7,
+          "limited_acute": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Chronic conditions (diabetes, hypertension, depression) represent 60% of Medicaid spending per MACPAC 2023. AI excels at protocol-driven chronic disease management.",
+          "[regulator] Chronic disease management represents 85% of Medicaid costs and aligns with existing ACO quality measures (MACPAC, 2024)",
+          "[patient_advocate] Starting with limited scope protects patients while AI systems prove safety and efficacy - chronic disease management requires understanding of complex social factors"
+        ]
+      }
+    },
+    "payment_structure": {
+      "minimum_savings_rate": {
+        "value": 2.0,
+        "type": "numeric",
+        "agent_spread": [
+          2.0,
+          2.0
+        ],
+        "uncertainty_range": [
+          1.5,
+          2.5
+        ],
+        "n_agents": 8,
+        "all_values": [
+          2.0,
+          2.0,
+          2.0,
+          2.0,
+          2.0,
+          2.0,
+          2.0,
+          2.0
+        ],
+        "justifications": [
+          "[economist] 2% MSR standard in Medicare ACO programs per CMS. Accounts for random variation in medical spending while incentivizing efficiency.",
+          "[regulator] Standard MSR for Medicare ACO models (42 CFR 425.604), required for budget neutrality",
+          "[patient_advocate] Standard 2% MSR used in Medicare ACO programs provides reasonable threshold for shared savings"
+        ]
+      },
+      "capitation_pmpm": {
+        "value": 437.5,
+        "type": "numeric",
+        "agent_spread": [
+          423.75,
+          450.0
+        ],
+        "uncertainty_range": [
+          415.0,
+          470.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          410.0,
+          450.0,
+          420.0,
+          450.0,
+          450.0,
+          485.0,
+          425.0,
+          425.0
+        ],
+        "justifications": [
+          "[economist] Current Medicaid MCO average is $450 PMPM per MACPAC 2023. 9% reduction ($40 PMPM) from AI administrative efficiency creates budget neutrality with quality improvement.",
+          "[regulator] Adjusted toward group median. CMS actuarial guide requires rates between 95-105% of FFS equivalent (CMS Rate Development Guide 2024-2025)",
+          "[patient_advocate] Lower PMPM reflects need to invest savings in patient services rather than administrative overhead - current Medicaid MCO rates average $400-450 PMPM"
+        ]
+      },
+      "payment_model": {
+        "value": "full_capitation",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "full_capitation": 6,
+          "hybrid_cap_ffs": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Full capitation eliminates FFS moral hazard and administrative burden. Arrow (1963) identified FFS as source of welfare loss through induced demand.",
+          "[regulator] Full capitation required for budget neutrality demonstration under 42 CFR 438.4(b)(2)",
+          "[patient_advocate] Hybrid model protects against underservice while maintaining cost control - important for vulnerable population that may need more services"
+        ]
+      },
+      "risk_sharing": {
+        "value": "two_sided_symmetric",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "two_sided_symmetric": 7,
+          "one_sided_upside": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Symmetric risk sharing prevents both under-provision (downside risk) and over-provision incentives. Optimal mechanism design per Laffont-Tirole (1993).",
+          "[regulator] CMS requires two-sided risk for ACO models to qualify for shared savings (42 CFR 425.600)",
+          "[patient_advocate] Upside-only risk protects against underservice of vulnerable populations while maintaining efficiency incentives"
+        ]
+      },
+      "shared_savings_split": {
+        "value": 60.0,
+        "type": "numeric",
+        "agent_spread": [
+          50.0,
+          60.0
+        ],
+        "uncertainty_range": [
+          50.0,
+          62.5
+        ],
+        "n_agents": 8,
+        "all_values": [
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "justifications": [
+          "[economist] 60% ACO share provides strong efficiency incentives while preserving 40% state savings. Standard in successful ACO models per CBO analysis 2022.",
+          "[regulator] Maximum allowable under Medicare ACO regulations (42 CFR 425.604), necessary for financial viability",
+          "[patient_advocate] 60% to ACO provides strong efficiency incentives while reserving 40% for state reinvestment in Medicaid program"
+        ]
+      }
+    },
+    "provider_rates": {
+      "pcp_rate_pct_medicare": {
+        "value": 125.0,
+        "type": "numeric",
+        "agent_spread": [
+          120.0,
+          125.0
+        ],
+        "uncertainty_range": [
+          120.0,
+          130.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          120.0,
+          125.0,
+          140.0,
+          125.0,
+          125.0,
+          125.0,
+          120.0,
+          120.0
+        ],
+        "justifications": [
+          "[economist] Current Medicaid PCP rates average 73% of Medicare per KFF 2023. 120% rate creates network adequacy and offsets AI substitution effects on physician income.",
+          "[regulator] Required to meet network adequacy standards under 42 CFR 438.68 in most state markets",
+          "[patient_advocate] Higher PCP rates essential to build adequate networks and reduce ghost networks - current low Medicaid rates drive provider shortages"
+        ]
+      },
+      "hospital_rate_pct_medicare": {
+        "value": 110.0,
+        "type": "numeric",
+        "agent_spread": [
+          108.0,
+          110.0
+        ],
+        "uncertainty_range": [
+          105.0,
+          115.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          108.0,
+          110.0,
+          125.0,
+          110.0,
+          110.0,
+          105.0,
+          108.0,
+          110.0
+        ],
+        "justifications": [
+          "[economist] Current Medicaid hospital rates average 89% of Medicare per MACPAC 2023. 108% rate ensures hospital participation while staying within budget neutrality constraint.",
+          "[regulator] Hospital association lobbying power requires premium above Medicare for network adequacy (AHA, 2023)",
+          "[patient_advocate] Higher hospital rates needed to prevent patient dumping and ensure quality inpatient care for Medicaid patients"
+        ]
+      },
+      "fqhc_payment_method": {
+        "value": "pps_plus_bonus",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "pps_plus_bonus": 7,
+          "pps_wrap": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Preserves federal FQHC PPS entitlement while adding performance bonus for physical exam referrals. Maintains FQHC financial viability per Section 330 requirements.",
+          "[regulator] PPS wrap payment required under Section 1902(bb) for FQHC Medicaid participation",
+          "[patient_advocate] PPS plus performance bonus maintains FQHC sustainability while incentivizing quality and access improvements"
+        ]
+      },
+      "specialist_rate_pct_medicare": {
+        "value": 95.0,
+        "type": "numeric",
+        "agent_spread": [
+          95.0,
+          102.5
+        ],
+        "uncertainty_range": [
+          90.0,
+          105.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          95.0,
+          95.0,
+          115.0,
+          100.0,
+          95.0,
+          110.0,
+          95.0,
+          95.0
+        ],
+        "justifications": [
+          "[economist] Specialists face less AI substitution. 95% of Medicare creates network adequacy while maintaining budget neutrality. Current Medicaid specialist rates 71% per Urban Institute 2023.",
+          "[regulator] Specialists have less Medicaid participation pressure, allowing rates closer to Medicare (MedPAC, 2024)",
+          "[patient_advocate] Specialist rate premium needed to ensure access for complex Medicaid patients who often face discrimination"
+        ]
+      },
+      "rural_rate_adjustment": {
+        "value": 15.0,
+        "type": "numeric",
+        "agent_spread": [
+          15.0,
+          15.0
+        ],
+        "uncertainty_range": [
+          10.0,
+          20.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          15.0,
+          15.0,
+          20.0,
+          15.0,
+          15.0,
+          15.0,
+          15.0,
+          15.0
+        ],
+        "justifications": [
+          "[economist] Medicare rural rate adjustments average 10-15% per MedPAC 2023. 15% premium addresses higher rural practice costs and maintains network adequacy.",
+          "[regulator] Standard rural adjustment in existing Medicaid ACO models (Oregon CCO, Massachusetts ACO)",
+          "[patient_advocate] Higher rural adjustment needed to maintain provider networks in underserved areas with higher practice costs"
+        ]
+      }
+    },
+    "org_structure": {
+      "surplus_distribution": {
+        "value": "community_reinvestment",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "community_reinvestment": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Community reinvestment in SDOH interventions maximizes welfare for Medicaid population. Prevents surplus extraction while improving population health outcomes.",
+          "[regulator] Required under IRS community benefit standards for 501(c)(3) organizations",
+          "[patient_advocate] All surplus must be reinvested in community health infrastructure and patient services, not extracted as profit"
+        ]
+      },
+      "executive_comp_cap": {
+        "value": 8.0,
+        "type": "numeric",
+        "agent_spread": [
+          8.0,
+          8.0
+        ],
+        "uncertainty_range": [
+          6.0,
+          10.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0,
+          8.0
+        ],
+        "justifications": [
+          "[economist] Median Medicaid income ~$25,000. 8x cap ($200,000) attracts qualified executives while preventing excessive compensation. Follows nonprofit best practices per BoardSource 2022.",
+          "[regulator] IRS intermediate sanctions rules for nonprofits require reasonable compensation (IRC Section 4958)",
+          "[patient_advocate] 8x cap balances need for qualified leadership with community accountability - median Medicaid income ~$15,000 so cap ~$120,000"
+        ]
+      },
+      "board_composition": {
+        "value": 40.0,
+        "type": "numeric",
+        "agent_spread": [
+          40.0,
+          40.0
+        ],
+        "uncertainty_range": [
+          35.0,
+          45.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          40.0,
+          40.0,
+          51.0,
+          40.0,
+          40.0,
+          40.0,
+          40.0,
+          30.0
+        ],
+        "justifications": [
+          "[economist] 40% beneficiary representation ensures accountability while maintaining operational expertise. Follows successful community health center governance models per NACHC standards.",
+          "[regulator] Consumer majority required under 42 CFR 438.52 for MCO board composition",
+          "[patient_advocate] Majority patient representation ensures Medicaid beneficiary voice drives organizational decisions and priorities"
+        ]
+      },
+      "conversion_prohibition": {
+        "value": "charter_lock",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "charter_lock": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Charter-level prohibition prevents for-profit conversion. Stronger than state law which can be changed. Follows successful credit union conversion prohibitions.",
+          "[regulator] Corporate charter amendment prevents conversion without state attorney general approval",
+          "[patient_advocate] Charter lock prevents future for-profit conversion and protects community investment in perpetuity"
+        ]
+      },
+      "legal_form": {
+        "value": "501c3_nonprofit",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "501c3_nonprofit": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] 501(c)(3) structure prevents profit extraction and ensures community benefit. Required for tax exemption and mission alignment per Arrow's nonprofit theory.",
+          "[regulator] Required for tax exemption and community benefit requirements under IRC Section 501(c)(3)",
+          "[patient_advocate] 501(c)(3) status ensures community benefit mission and prevents profit extraction from vulnerable population"
+        ]
+      }
+    },
+    "regulatory_pathway": {
+      "ai_licensure_model": {
+        "value": "physician_supervised",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "physician_supervised": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Physician supervision model allows AI practice within existing medical practice acts. Avoids complex new provider category regulations while ensuring clinical oversight.",
+          "[regulator] Physician supervision model avoids state medical practice act conflicts while ensuring clinical oversight",
+          "[patient_advocate] Physician supervision ensures clinical accountability and patient safety while allowing AI efficiency gains"
+        ]
+      },
+      "pilot_geography": {
+        "value": "single_metro",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "single_metro": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Single metropolitan area allows controlled rollout while achieving minimum viable scale. Reduces regulatory complexity and enables rapid iteration.",
+          "[regulator] Single metropolitan area provides sufficient scale while limiting implementation risk for initial demonstration",
+          "[patient_advocate] Single metro pilot allows focused implementation while serving diverse urban Medicaid population"
+        ]
+      },
+      "implementation_timeline": {
+        "value": 27.0,
+        "type": "numeric",
+        "agent_spread": [
+          24.0,
+          30.0
+        ],
+        "uncertainty_range": [
+          22.0,
+          33.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          24.0,
+          24.0,
+          30.0,
+          24.0,
+          24.0,
+          30.0,
+          30.0,
+          30.0
+        ],
+        "justifications": [
+          "[economist] Section 1115 waiver approval averages 18-24 months per KFF analysis 2023. Additional 6 months for AI system deployment and provider contracting.",
+          "[regulator] Standard CMS Section 1115 waiver approval timeline with public comment periods (42 CFR 431.400-431.428)",
+          "[patient_advocate] 30 months allows adequate time for community engagement, system development, and provider network building"
+        ]
+      },
+      "federal_authority": {
+        "value": "section_1115",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "section_1115": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Section 1115 demonstration authority allows innovation in Medicaid delivery systems. Provides federal waiver authority for AI clinical practice per 42 USC 1315.",
+          "[regulator] Section 1115 demonstration authority required for AI clinical practice waiver (42 USC 1315)",
+          "[patient_advocate] Section 1115 waiver provides flexibility needed for innovative AI delivery model while maintaining federal oversight"
+        ]
+      },
+      "sunset_provision": {
+        "value": 5.0,
+        "type": "numeric",
+        "agent_spread": [
+          5.0,
+          5.0
+        ],
+        "uncertainty_range": [
+          4.0,
+          6.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0
+        ],
+        "justifications": [
+          "[economist] 5-year sunset standard for CMS demonstrations per Section 1115 regulations. Balances innovation incentives with accountability requirements.",
+          "[regulator] Standard Section 1115 waiver term length (42 CFR 431.412)",
+          "[patient_advocate] 5-year sunset ensures regular review while providing stability for network development and patient relationships"
+        ]
+      }
+    },
+    "quality_framework": {
+      "ai_safety_metrics": {
+        "value": "mandatory_public",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "mandatory_public": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Public reporting of AI escalation rates, override rates, and safety events ensures transparency and accountability. Critical for public trust in AI clinical systems.",
+          "[regulator] Public transparency required for AI safety accountability and regulatory oversight",
+          "[patient_advocate] Public reporting of AI safety metrics ensures transparency and community accountability for AI clinical decisions"
+        ]
+      },
+      "health_equity_reporting": {
+        "value": "mandatory_public",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "mandatory_public": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Public stratified reporting by race/ethnicity/language essential for detecting AI bias. Required for accountability to Medicaid populations per Title VI Civil Rights Act.",
+          "[regulator] Required under CMS health equity initiatives and Section 1557 nondiscrimination requirements",
+          "[patient_advocate] Public health equity reporting ensures transparency on disparities and community accountability for equitable care"
+        ]
+      },
+      "quality_withhold_pct": {
+        "value": 5.0,
+        "type": "numeric",
+        "agent_spread": [
+          5.0,
+          5.0
+        ],
+        "uncertainty_range": [
+          3.0,
+          7.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          5.0,
+          3.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0
+        ],
+        "justifications": [
+          "[economist] 5% quality withhold standard in Medicaid managed care per CMS regulations 42 CFR 438.6. Provides quality incentives without threatening financial viability.",
+          "[regulator] Reduced from 5% to balance quality incentives with financial stability during AI implementation phase",
+          "[patient_advocate] 5% withhold provides meaningful quality incentive while maintaining cash flow for operations and patient services"
+        ]
+      },
+      "hedis_measures_count": {
+        "value": 25.0,
+        "type": "numeric",
+        "agent_spread": [
+          25.0,
+          25.0
+        ],
+        "uncertainty_range": [
+          20.0,
+          30.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          25.0,
+          25.0,
+          30.0,
+          25.0,
+          25.0,
+          25.0,
+          25.0,
+          25.0
+        ],
+        "justifications": [
+          "[economist] NCQA HEDIS core set contains 25 measures most relevant to Medicaid populations. Maintains comparability with existing MCO quality reporting per CMS requirements.",
+          "[regulator] Core HEDIS measure set required under 42 CFR 438.330 for MCO quality reporting",
+          "[patient_advocate] 30 HEDIS measures provide comprehensive quality monitoring including preventive care, chronic disease management, and behavioral health"
+        ]
+      },
+      "patient_reported_outcomes": {
+        "value": "mandatory_annual",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "mandatory_semi_annual": 1,
+          "mandatory_annual": 6,
+          "mandatory_quarterly": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Semi-annual PRO collection (PHQ-9, SF-12) captures clinical improvement while minimizing survey burden. More sensitive than annual for AI system optimization.",
+          "[regulator] Annual PRO collection aligns with HEDIS measurement year and reduces administrative burden",
+          "[patient_advocate] Quarterly PRO measurement ensures patient voice in quality assessment and rapid identification of access or quality problems"
+        ]
+      }
+    },
+    "ai_architecture": {
+      "explainability_requirement": {
+        "value": "key_factors_only",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "key_factors_only": 6,
+          "full_reasoning_chain": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Key factors explanation balances transparency with usability. Full reasoning chains create cognitive overload while confidence scores provide insufficient information per XAI literature.",
+          "[regulator] Key factors provide sufficient transparency for clinical oversight without overwhelming users",
+          "[patient_advocate] Full explainability required for patient trust, informed consent, and provider oversight of AI clinical decisions"
+        ]
+      },
+      "architecture_type": {
+        "value": "multi_model_ensemble",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "multi_model_ensemble": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Ensemble methods reduce individual model bias and improve robustness. Multiple models voting reduces Type I and Type II diagnostic errors per Dietterich (2000).",
+          "[regulator] Ensemble methods reduce individual model bias and improve reliability for clinical decisions",
+          "[patient_advocate] Multi-model ensemble provides redundancy and safety for clinical decisions affecting vulnerable population"
+        ]
+      },
+      "clinical_knowledge_update": {
+        "value": "monthly",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "monthly": 7,
+          "weekly": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Monthly updates balance clinical currency with system stability. Allows incorporation of new evidence while preventing constant model drift per MLOps best practices.",
+          "[regulator] Monthly updates balance clinical currency with system stability and validation requirements",
+          "[patient_advocate] Weekly updates ensure AI system incorporates latest clinical evidence and safety alerts rapidly"
+        ]
+      },
+      "model_count": {
+        "value": 3.0,
+        "type": "numeric",
+        "agent_spread": [
+          3.0,
+          3.0
+        ],
+        "uncertainty_range": [
+          2.0,
+          4.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "justifications": [
+          "[economist] Three models optimal for ensemble voting - prevents ties while limiting computational cost. Established best practice in ML ensemble literature (Breiman, 1996).",
+          "[regulator] Three models provide ensemble benefits while maintaining computational feasibility and interpretability",
+          "[patient_advocate] Three models provide adequate redundancy while remaining computationally feasible and interpretable"
+        ]
+      },
+      "safety_layer_type": {
+        "value": "multi_layer",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "multi_layer": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Multiple safety layers (rules-based + confidence thresholds + human oversight) create defense in depth. Reduces catastrophic failure risk per safety-critical systems engineering.",
+          "[regulator] Layered safety approach required for high-stakes clinical decisions with multiple failure modes",
+          "[patient_advocate] Multi-layer safety system provides comprehensive protection against AI errors for vulnerable patient population"
+        ]
+      }
+    },
+    "human_oversight": {
+      "patient_escalation_mechanism": {
+        "value": "callback_within_1hr",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "callback_within_1hr": 6,
+          "one_click_anytime": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] One-hour callback provides timely access while managing physician workload. Balances patient autonomy with resource constraints per patient-centered care principles.",
+          "[regulator] One-hour callback standard provides timely access while allowing physician workflow management",
+          "[patient_advocate] One-click escalation ensures patient autonomy and immediate access to human physician when desired"
+        ]
+      },
+      "supervision_ratio": {
+        "value": 45.0,
+        "type": "numeric",
+        "agent_spread": [
+          33.75,
+          50.0
+        ],
+        "uncertainty_range": [
+          35.0,
+          60.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          50.0,
+          50.0,
+          20.0,
+          50.0,
+          35.0,
+          30.0,
+          50.0,
+          40.0
+        ],
+        "justifications": [
+          "[economist] 50:1 ratio allows meaningful oversight while achieving efficiency gains. Based on physician capacity for chart review and escalation response per time-motion studies.",
+          "[regulator] Maximum feasible supervision ratio while maintaining clinical oversight quality",
+          "[patient_advocate] Lower supervision ratio ensures adequate physician oversight for complex Medicaid population with multiple comorbidities"
+        ]
+      },
+      "retrospective_audit_pct": {
+        "value": 22.5,
+        "type": "numeric",
+        "agent_spread": [
+          18.75,
+          25.0
+        ],
+        "uncertainty_range": [
+          17.5,
+          27.5
+        ],
+        "n_agents": 8,
+        "all_values": [
+          25.0,
+          15.0,
+          50.0,
+          25.0,
+          20.0,
+          25.0,
+          20.0,
+          15.0
+        ],
+        "justifications": [
+          "[economist] 25% retrospective audit enables quality improvement and bias detection. Higher than typical medical record audit rates due to AI novelty and regulatory requirements.",
+          "[regulator] Adjusted upward from 10% to align with group consensus while maintaining audit feasibility",
+          "[patient_advocate] 50% retrospective audit ensures comprehensive quality monitoring and AI safety validation for vulnerable population"
+        ]
+      },
+      "mandatory_physician_encounters": {
+        "value": "new_plus_complex",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "new_plus_complex": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] New patients and complex cases require physician evaluation for care planning and relationship establishment. Balances AI efficiency with clinical appropriateness.",
+          "[regulator] New patients and complex conditions require physician assessment for care plan establishment",
+          "[patient_advocate] New patients and complex cases require physician involvement to establish relationships and handle complexity"
+        ]
+      },
+      "synchronous_review_pct": {
+        "value": 15.0,
+        "type": "numeric",
+        "agent_spread": [
+          15.0,
+          15.0
+        ],
+        "uncertainty_range": [
+          10.0,
+          20.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          15.0,
+          15.0,
+          25.0,
+          15.0,
+          15.0,
+          15.0,
+          15.0,
+          15.0
+        ],
+        "justifications": [
+          "[economist] 15% synchronous review focuses on high-uncertainty cases while maintaining efficiency. Balances safety with cost-effectiveness per risk stratification principles.",
+          "[regulator] 15% real-time review provides safety net for high-risk encounters while maintaining efficiency",
+          "[patient_advocate] 25% synchronous review ensures real-time safety monitoring for high-risk population while maintaining efficiency"
+        ]
+      }
+    },
+    "sdoh_integration": {
+      "community_partnership_model": {
+        "value": "contracted_network",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "contracted_network": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Contracted CBO network ensures accountability and quality while leveraging community expertise. Balances integration with community autonomy per collective impact framework.",
+          "[regulator] Contracted network provides accountability while leveraging existing community infrastructure",
+          "[patient_advocate] Contracted network ensures accountability and quality standards for community-based social services"
+        ]
+      },
+      "housing_food_direct_spend": {
+        "value": "yes_budgeted",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "yes_budgeted": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Direct spending on housing/food assistance addresses root causes of health disparities. Medicaid waiver authority allows health-related social services per CMS guidance 2021.",
+          "[regulator] Direct spending authority required for effective SDOH intervention under Section 1115 waiver",
+          "[patient_advocate] Direct spending on housing and food assistance addresses root causes of health problems for Medicaid population"
+        ]
+      },
+      "social_services_budget_pmpm": {
+        "value": 25.0,
+        "type": "numeric",
+        "agent_spread": [
+          25.0,
+          25.0
+        ],
+        "uncertainty_range": [
+          20.0,
+          30.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          25.0,
+          25.0,
+          30.0,
+          25.0,
+          25.0,
+          25.0,
+          25.0,
+          25.0
+        ],
+        "justifications": [
+          "[economist] 25 PMPM for housing/food assistance based on successful Medicaid SDOH interventions. CareOregon housing program shows $3:1 ROI at this spending level per Health Affairs 2022.",
+          "[regulator] Evidence from North Carolina Medicaid transformation suggests $25 PMPM adequate for SDOH interventions",
+          "[patient_advocate] Higher social services budget needed to address extensive SDOH needs of Medicaid population"
+        ]
+      },
+      "chw_ratio": {
+        "value": 2.5,
+        "type": "numeric",
+        "agent_spread": [
+          2.5,
+          2.625
+        ],
+        "uncertainty_range": [
+          2.0,
+          3.0
+        ],
+        "n_agents": 8,
+        "all_values": [
+          2.5,
+          2.5,
+          4.0,
+          2.5,
+          3.0,
+          2.5,
+          2.5,
+          2.5
+        ],
+        "justifications": [
+          "[economist] 2.5:1000 ratio based on successful CHW programs in Medicaid populations. Enables meaningful SDOH intervention while maintaining cost-effectiveness per AHRQ evidence review 2022.",
+          "[regulator] Evidence-based CHW ratio from successful Medicaid ACO models (Oregon CCO, North Carolina)",
+          "[patient_advocate] Higher CHW ratio needed for Medicaid population with extensive social needs and barriers to care"
+        ]
+      },
+      "sdoh_screening_frequency": {
+        "value": "annual",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "semi_annual": 2,
+          "annual": 6
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Semi-annual screening captures SDOH changes in dynamic Medicaid population. More responsive than annual screening for housing/food insecurity interventions per PRAPARE validation studies.",
+          "[regulator] Annual screening aligns with preventive care visits and reduces administrative burden",
+          "[patient_advocate] Semi-annual SDOH screening captures changing social needs for unstably housed and employed Medicaid population"
+        ]
+      }
+    },
+    "rural_urban": {
+      "critical_access_hospital_policy": {
+        "value": "enhanced_payment",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "enhanced_payment": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Enhanced payment for CAHs maintains rural hospital viability while ensuring emergency access. Critical for rural network adequacy per Medicare CAH payment model.",
+          "[regulator] Enhanced payment necessary to maintain rural hospital financial viability and network adequacy",
+          "[patient_advocate] Enhanced payment ensures rural hospital sustainability and maintains local emergency and inpatient capacity"
+        ]
+      },
+      "broadband_solution": {
+        "value": "subsidized_hotspot",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "subsidized_hotspot": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Subsidized mobile hotspots address rural broadband gaps at lower cost than infrastructure investment. Leverages existing cellular coverage per FCC broadband maps 2023.",
+          "[regulator] Hotspot subsidies provide immediate broadband access while leveraging existing cellular infrastructure",
+          "[patient_advocate] Subsidized hotspots provide reliable internet access for telehealth while maintaining patient privacy"
+        ]
+      },
+      "rural_delivery_model": {
+        "value": "virtual_plus_mobile",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "virtual_plus_mobile": 6,
+          "fqhc_partnership": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Virtual care with mobile unit backup addresses rural provider shortages while ensuring access to physical examination. Leverages AI efficiency for rural populations.",
+          "[regulator] Hybrid model addresses both access and broadband limitations in rural areas",
+          "[patient_advocate] FQHC partnership leverages existing rural infrastructure and relationships with underserved populations"
+        ]
+      },
+      "rural_specialist_access": {
+        "value": "etelehealth",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "etelehealth": 7,
+          "telehealth": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] eConsult model enables specialist access without travel burden. Proven effective for rural populations per HRSA evaluation studies. More cost-effective than transportation assistance.",
+          "[regulator] Enhanced telehealth with remote monitoring capabilities addresses rural specialist shortages",
+          "[patient_advocate] Standard telehealth provides adequate specialist access while being more accessible than e-consult systems"
+        ]
+      },
+      "telehealth_infrastructure_investment": {
+        "value": 71.25,
+        "type": "numeric",
+        "agent_spread": [
+          63.75,
+          75.0
+        ],
+        "uncertainty_range": [
+          55.0,
+          87.5
+        ],
+        "n_agents": 8,
+        "all_values": [
+          75.0,
+          75.0,
+          75.0,
+          65.0,
+          60.0,
+          75.0,
+          67.5,
+          50.0
+        ],
+        "justifications": [
+          "[economist] 75 per rural member annually covers broadband subsidies, mobile units, and telehealth equipment. Based on successful rural telehealth programs per HRSA cost analysis 2022.",
+          "[regulator] Infrastructure investment necessary for reliable rural telehealth delivery",
+          "[patient_advocate] Higher infrastructure investment needed to ensure reliable telehealth access in underserved rural areas"
+        ]
+      }
+    },
+    "anti_monopoly": {
+      "any_willing_provider": {
+        "value": "yes_with_quality_floor",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "yes_with_quality_floor": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Any willing provider with quality standards prevents network manipulation while maintaining quality. Balances access with accountability per antitrust economics.",
+          "[regulator] Quality floor prevents network dilution while maintaining competitive access",
+          "[patient_advocate] Any willing provider with quality standards maximizes network adequacy while ensuring minimum care standards"
+        ]
+      },
+      "network_exclusivity": {
+        "value": "closed_network",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "closed_network": 6,
+          "open_for_specialists": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Closed network enables cost control and care coordination while maintaining adequate access. Standard in successful managed care models per managed care literature.",
+          "[regulator] Specialist access requires flexibility while maintaining primary care coordination",
+          "[patient_advocate] Open specialist network ensures access to subspecialty care that may not be available in-network"
+        ]
+      },
+      "rate_negotiation_approach": {
+        "value": "medicare_reference",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "medicare_reference": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Medicare reference pricing eliminates monopoly rent extraction while ensuring provider participation. Established precedent in all-payer rate setting systems per Maryland model.",
+          "[regulator] Medicare reference pricing provides objective rate floor and ceiling for monopoly provider negotiations",
+          "[patient_advocate] Medicare reference pricing provides transparent, standardized rates that prevent monopoly provider price gouging"
+        ]
+      },
+      "monopoly_provider_policy": {
+        "value": "must_contract_at_cap",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "must_contract_at_cap": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Mandatory contracting at capped rates prevents monopoly abuse of sole community provider status. Essential for network adequacy in concentrated markets per antitrust analysis.",
+          "[regulator] Mandatory contracting at capitated rates prevents monopoly price extraction",
+          "[patient_advocate] Monopoly providers must contract at capped rates to prevent exploitation of market power against vulnerable population"
+        ]
+      },
+      "site_of_service_steering": {
+        "value": "active_steering",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "active_steering": 7,
+          "information_only": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Active steering to appropriate sites reduces unnecessary costs while maintaining quality. AI system can optimize site selection better than patient choice alone per health economics literature.",
+          "[regulator] Active steering necessary to achieve cost savings and appropriate utilization",
+          "[patient_advocate] Information-only approach respects patient autonomy while providing cost and quality transparency"
+        ]
+      }
+    },
+    "ethical_governance": {
+      "transparency_level": {
+        "value": "annual_public_report",
+        "type": "categorical",
+        "agreement_fraction": 0.75,
+        "vote_distribution": {
+          "annual_public_report": 6,
+          "full_public_dashboard": 2
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Annual public reporting balances transparency with operational confidentiality. Provides accountability while protecting competitive information per nonprofit governance standards.",
+          "[regulator] Annual reporting provides transparency while protecting competitive and clinical information",
+          "[patient_advocate] Full public transparency ensures community accountability and enables informed patient choice about AI care"
+        ]
+      },
+      "patient_data_rights": {
+        "value": "full_portability_deletion",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "full_portability_deletion": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Full data portability and deletion rights ensure patient autonomy and comply with emerging privacy regulations. Essential for trust in AI clinical systems per privacy economics.",
+          "[regulator] Full data rights required under emerging state privacy laws and patient autonomy principles",
+          "[patient_advocate] Full data rights ensure patient control over health information and prevent data exploitation by AI systems"
+        ]
+      },
+      "bias_audit_stratification": {
+        "value": "race_gender_age_disability_language",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "race_gender_age_disability_language": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Comprehensive stratification covers major sources of healthcare bias. Required for Title VI compliance and ethical AI deployment per NIST AI Risk Management Framework.",
+          "[regulator] Comprehensive stratification required under Section 1557 nondiscrimination and ADA compliance",
+          "[patient_advocate] Comprehensive bias auditing across all major dimensions affecting Medicaid population ensures equitable AI performance"
+        ]
+      },
+      "ai_audit_frequency": {
+        "value": "quarterly",
+        "type": "categorical",
+        "agreement_fraction": 1.0,
+        "vote_distribution": {
+          "quarterly": 8
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Quarterly algorithmic audits enable rapid detection of bias or safety issues while allowing system optimization. Balances oversight with operational efficiency per AI governance best practices.",
+          "[regulator] Quarterly audits balance oversight needs with operational stability during AI system maturation",
+          "[patient_advocate] Quarterly AI audits provide regular safety and bias monitoring while allowing time for corrective action"
+        ]
+      },
+      "independent_ethics_board": {
+        "value": "binding_halt_authority",
+        "type": "categorical",
+        "agreement_fraction": 0.875,
+        "vote_distribution": {
+          "binding_halt_authority": 7,
+          "advisory_with_public_report": 1
+        },
+        "n_agents": 8,
+        "justifications": [
+          "[economist] Independent ethics board with binding authority provides ultimate safeguard against AI system harm. Essential check on organizational incentives per AI safety literature.",
+          "[regulator] Advisory board with public reporting provides oversight while preserving operational authority",
+          "[patient_advocate] Independent ethics board with binding authority ensures community can stop harmful AI practices immediately"
+        ]
+      }
+    }
+  },
+  "minority_reports": {
+    "economist": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"clinical_model.encounter_modality_mix\",\n            \"parameter\": \"encounter_modality_mix\",\n            \"consensus_value\": 32.5,\n            \"my_value\": 35.0,\n            \"rationale\": \"The consensus underestimates the access barriers facing Medicaid populations. Pew Research (2023) shows 87% smartphone penetration vs 65% broadband among low-income households. Asynchronous text-based AI care reduces cognitive load and completion rates are 40% higher than synchronous video among populations with limited digital literacy (Benda et al., 2020). The 2.5 percentage point difference represents ~850 additional synchronous encounters per 10,000 members annually - creating unnecessary access barriers for working parents, shift workers, and those with unreliable transportation.\",\n            \"risk_if_consensus\": \"Higher synchronous requirements will recreate existing access barriers that Medicaid MCOs already impose. Rural and working-poor populations will face appointment scheduling conflicts, leading to delayed care and emergency department utilization. This undermines the core Arrow (1963) insight that healthcare markets fail due to access asymmetries.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"payment_structure.capitation_pmpm\",\n            \"parameter\": \"capitation_pmpm\", \n            \"consensus_value\": 437.5,\n            \"my_value\": 410.0,\n            \"rationale\": \"The consensus fails to fully capture AI administrative efficiency gains. Current MCO administrative overhead averages 13% per NAIC data. AI automation of claims processing (reducing from 8 FTE to 1 FTE per 10,000 members), prior authorization (eliminating 90% of manual reviews), and care management (reducing from 12 to 4 FTE per 10,000 members) can reduce overhead to 5%. This generates $40 PMPM savings that should flow to enhanced provider payments and community reinvestment, not MCO margins. The consensus $437.50 leaves $27.50 PMPM in unnecessary administrative costs.\",\n            \"risk_if_consensus\": \"Higher capitation reduces funds available for provider rate increases and SDOH interventions. This perpetuates the current Medicaid access crisis where low provider payments create ghost networks. Budget neutrality requires maximizing efficiency gains - the consensus design wastes potential savings on administrative overhead rather than clinical care.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"quality_framework.patient_reported_outcomes\",\n            \"parameter\": \"patient_reported_outcomes\",\n            \"consensus_value\": \"mandatory_annual\",\n            \"my_value\": \"mandatory_semi_annual\", \n            \"rationale\": \"Annual PRO collection is inadequate for AI system optimization and bias detection. Machine learning models require higher-frequency feedback loops to detect performance degradation or population subgroup differences. Semi-annual collection of PHQ-9, SF-12, and patient experience measures enables rapid identification of AI system bias affecting specific demographic groups. The marginal cost is minimal with automated collection ($2 PMPM vs $1 PMPM annually), but the value for clinical quality improvement and equity monitoring is substantial. AHRQ evidence reviews show PRO collection frequency correlates with clinical improvement in managed care populations.\",\n            \"risk_if_consensus\": \"Annual PRO collection creates 12-month blind spots where AI system bias or quality degradation could affect vulnerable populations undetected. This is particularly dangerous for mental health conditions where AI diagnostic accuracy may vary by race, gender, or language - exactly the populations Medicaid serves. The consensus design prioritizes administrative convenience over patient safety and health equity.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"sdoh_integration.sdoh_screening_frequency\",\n            \"parameter\": \"sdoh_screening_frequency\",\n            \"consensus_value\": \"annual\",\n            \"my_value\": \"semi_annual\",\n            \"rationale\": \"Annual SDOH screening fails to capture the housing and employment instability endemic to Medicaid populations. Urban Institute data shows 40% of Medicaid adults experience housing instability annually, with changes occurring every 4-6 months on average. Food insecurity fluctuates seasonally and with employment status. The PRAPARE validation studies recommend semi-annual screening for high-risk populations. AI-automated collection reduces survey burden while enabling responsive CHW interventions. The National Academy of Medicine's SDOH framework explicitly calls for higher-frequency screening in unstable populations.\",\n            \"risk_if_consensus\": \"Annual screening misses critical intervention opportunities for housing crises, food insecurity, and employment disruptions that drive emergency department utilization and hospitalizations. This undermines the entire SDOH investment strategy - we cannot address root causes of health disparities if we only assess them once yearly. The consensus perpetuates the medical model's failure to respond to social determinants dynamically.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design is viable but suboptimal. My dissents address four areas where the consensus prioritizes administrative convenience over health equity and efficiency. The most critical flaw is the inflated capitation rate ($437.50 vs $410), which wastes $27.50 PMPM that could fund provider rate increases and SDOH interventions. The other dissents (encounter modality mix, PRO frequency, SDOH screening) reflect the consensus's insufficient attention to Medicaid population characteristics - high rates of work/transportation barriers, housing instability, and need for responsive clinical monitoring. These design flaws will not prevent the AI ACO from functioning, but they will limit its effectiveness in addressing the access and equity failures that justify replacing for-profit MCOs. The consensus design achieves budget neutrality and regulatory feasibility but falls short of maximizing welfare gains for vulnerable populations.\"\n}\n```",
+    "regulator": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"payment_structure.capitation_pmpm\",\n            \"consensus_value\": 437.5,\n            \"my_value\": 450,\n            \"rationale\": \"CMS actuarial requirements demand conservative rate-setting for demonstration waivers. The Rate Development Guide (2024-2025) requires rates between 95-105% of actuarially sound FFS equivalent. Current Medicaid MCO rates average $450 PMPM per MACPAC 2023. A $12.50 reduction assumes immediate 2.8% administrative savings that may not materialize during AI system learning curve. Budget neutrality calculations must account for implementation risk - CMS consistently rejects waiver applications with aggressive savings assumptions in Year 1.\",\n            \"risk_if_consensus\": \"CMS may reject waiver application for inadequate rate justification. If approved, insufficient capitation could force service cuts, provider payment delays, or organizational insolvency during the critical implementation phase. This would undermine beneficiary access and destroy political viability for the model.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"provider_rates.fqhc_payment_method\",\n            \"consensus_value\": \"pps_plus_bonus\",\n            \"my_value\": \"pps_wrap\",\n            \"rationale\": \"Section 1902(bb) of the Social Security Act creates statutory FQHC payment protections that cannot be waived under Section 1115 authority. Federal law requires Medicaid to pay FQHCs the difference between their Prospective Payment System (PPS) rate and the Medicaid managed care payment - the 'wrap payment.' Adding bonus payments above PPS rates without corresponding wrap payment reductions would violate federal budget neutrality requirements and potentially trigger False Claims Act liability.\",\n            \"risk_if_consensus\": \"Legal challenge from CMS or Department of Justice for violating statutory FQHC payment requirements. Bonus payments without PPS wrap compliance could result in federal audit findings, recoupment demands, and potential criminal liability under False Claims Act. This legal risk could terminate the demonstration.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"quality_framework.quality_withhold_pct\",\n            \"consensus_value\": 5.0,\n            \"my_value\": 3.0,\n            \"rationale\": \"During AI system maturation, higher quality withholding creates perverse incentives and operational instability. Quality metrics for AI clinical decisions lack validation - we cannot fairly penalize organizations for AI performance issues still being identified. The Medicare Shared Savings Program reduces quality withholding for new ACOs in Track 1. A 3% withhold maintains quality incentives while preventing cash flow disruption that could compromise beneficiary access during the learning curve period.\",\n            \"risk_if_consensus\": \"5% withholding could destabilize operations before AI quality metrics are validated and benchmarked. Organizations may avoid complex patients or limit AI utilization to protect quality scores, defeating the innovation purpose. Financial stress from excessive withholding could force premature program termination.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"human_oversight.retrospective_audit_pct\",\n            \"consensus_value\": 22.5,\n            \"my_value\": 15.0,\n            \"rationale\": \"Physician reviewer capacity is the binding constraint. A 22.5% audit rate requires approximately 0.25 FTE physician reviewer per 1,000 members, competing with direct patient care responsibilities. Medicare Advantage plans typically audit 10-15% of encounters. Higher audit percentages may overwhelm physician reviewers, creating backlogs that delay quality feedback loops essential for AI system improvement. The marginal quality benefit above 15% is minimal while administrative burden increases substantially.\",\n            \"risk_if_consensus\": \"Physician reviewer burnout and audit backlogs could delay identification of AI system problems. Excessive audit burden may drive physician participation away from the model. Quality improvement cycles could slow due to delayed feedback, compromising patient safety during AI system optimization.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"anti_monopoly.network_exclusivity\",\n            \"consensus_value\": \"closed_network\",\n            \"my_value\": \"open_for_specialists\",\n            \"rationale\": \"Network adequacy requirements under 42 CFR 438.68 are particularly challenging for specialists in rural and underserved areas. Closed specialist networks risk violating federal adequacy standards, especially for subspecialists like pediatric cardiology or oncology. The Oregon Coordinated Care Organization model allows specialist flexibility while maintaining primary care coordination. Open specialist networks provide essential safety valve for complex cases without undermining care coordination.\",\n            \"risk_if_consensus\": \"CMS could find the demonstration in violation of network adequacy standards, particularly in rural pilot areas. Beneficiaries with complex conditions may face access barriers, creating legal liability under Section 1557 nondiscrimination requirements. Provider lawsuits challenging network adequacy could disrupt operations.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"ethical_governance.independent_ethics_board\",\n            \"consensus_value\": \"binding_halt_authority\",\n            \"my_value\": \"advisory_with_public_report\",\n            \"rationale\": \"Binding halt authority creates governance confusion and regulatory uncertainty. State Medicaid agencies retain ultimate oversight responsibility under federal law - delegating halt authority to independent boards could conflict with state administrative law and CMS oversight requirements. Advisory boards with mandatory public reporting provide accountability while preserving clear governance chains. The Medicare Payment Advisory Commission (MedPAC) model demonstrates effective advisory oversight without operational authority conflicts.\",\n            \"risk_if_consensus\": \"Legal challenges over governance authority could create operational paralysis. Conflicts between ethics board halt decisions and state Medicaid agency directions could trigger federal intervention. Binding authority without clear legal framework may violate state administrative procedure acts, creating litigation risk that could terminate the demonstration.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design has significant risks that could prevent CMS approval or cause implementation failure. The capitation rate and FQHC payment issues represent strong legal and financial risks that could kill the demonstration before launch. The quality withhold and audit percentage issues create moderate operational risks that could undermine performance during the critical implementation phase. However, the core AI clinical model and organizational structure remain sound. With adjustments to address the payment and legal compliance issues, the design could achieve CMS approval and successful implementation. The key insight is that regulatory innovation requires conservative financial assumptions and strict compliance with existing statutory requirements - the demonstration can test AI clinical delivery without simultaneously challenging fundamental Medicaid payment laws.\"\n}\n```",
+    "patient_advocate": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"escalation_threshold\",\n            \"consensus_value\": \"high_acuity_only\",\n            \"my_value\": \"any_uncertainty\",\n            \"rationale\": \"Medicaid patients have complex psychosocial factors (housing instability, food insecurity, trauma history, substance use) that AI cannot adequately assess but critically impact clinical decisions. Studies show Medicaid patients have 2-3x higher rates of adverse childhood experiences and social complexity compared to commercially insured patients. Any diagnostic uncertainty should trigger human review because the stakes of missed social determinants are too high for vulnerable populations.\",\n            \"risk_if_consensus\": \"AI will miss critical social context leading to inappropriate treatment plans, medication non-adherence due to unaddressed barriers, and worsened health outcomes. High-acuity-only threshold creates two-tier system where wealthy patients get nuanced human judgment while poor patients get algorithmic care that ignores their complex social reality.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"ai_diagnostic_scope\",\n            \"consensus_value\": \"common_chronic\",\n            \"my_value\": \"limited_acute\",\n            \"rationale\": \"Chronic disease management for Medicaid patients requires understanding complex social barriers - food insecurity affects diabetes management, housing instability affects medication storage, work schedules affect appointment adherence. AI cannot assess whether a patient can afford medications, has reliable food access, or faces competing survival priorities. Starting with limited acute conditions allows AI to prove safety without risking harm from inadequate chronic care management.\",\n            \"risk_if_consensus\": \"AI chronic disease management will fail for Medicaid patients because it cannot address social determinants. Patients will have poor outcomes, leading to emergency department visits and hospitalizations that could be prevented with human physicians who understand social context. This recreates the managed care failures of the 1990s with algorithmic rather than administrative barriers.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"payment_model\",\n            \"consensus_value\": \"full_capitation\",\n            \"my_value\": \"hybrid_cap_ffs\",\n            \"rationale\": \"Pure capitation creates dangerous incentives to underserve high-need Medicaid patients who often have unmet medical and social needs. Hybrid model with FFS component for complex cases, mental health services, and SDOH interventions prevents rationing of necessary care. Historical evidence from 1990s Medicaid managed care shows pure capitation led to access restrictions and poor outcomes for vulnerable populations.\",\n            \"risk_if_consensus\": \"Full capitation will incentivize denial of services to high-cost Medicaid patients, particularly those with mental illness, substance use disorders, and complex medical conditions. This recreates the worst aspects of 1990s managed care with AI providing sophisticated tools for service denial. Vulnerable patients will face barriers to specialty care, mental health services, and necessary procedures.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"risk_sharing\",\n            \"consensus_value\": \"two_sided_symmetric\",\n            \"my_value\": \"one_sided_upside\",\n            \"rationale\": \"Two-sided risk creates incentives to stint on care for vulnerable Medicaid patients who cannot advocate effectively for themselves. Upside-only risk ensures quality is never compromised for cost savings while still providing efficiency incentives. Medicaid patients have historically been subject to rationing and should not bear additional risk of inadequate care due to financial incentives on providers.\",\n            \"risk_if_consensus\": \"Downside financial risk will lead to subtle rationing of care through longer wait times, restricted formularies, limited specialist access, and denial of borderline-necessary services. Medicaid patients, who often lack health literacy and advocacy skills, will be disproportionately harmed by cost-cutting measures driven by financial risk.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"board_composition\",\n            \"consensus_value\": 40.0,\n            \"my_value\": 51.0,\n            \"rationale\": \"Medicaid patients have been systematically excluded from healthcare governance decisions that affect them. Majority patient representation (51%) ensures their voices drive organizational priorities rather than being advisory. This follows successful community health center governance models where consumer majority is required by federal law (42 CFR 51c.304). Without majority control, professional and business interests will dominate decision-making.\",\n            \"risk_if_consensus\": \"40% patient representation creates tokenism where patient voices are heard but not decisive. Professional and administrative interests will drive decisions about service delivery, quality measures, and resource allocation. This perpetuates paternalistic healthcare where decisions are made 'for' rather than 'by' Medicaid patients, undermining the community accountability that is essential for serving vulnerable populations.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"provider_rates\",\n            \"consensus_value\": \"125% PCP, 95% specialist, 110% hospital\",\n            \"my_value\": \"140% PCP, 115% specialist, 125% hospital\",\n            \"rationale\": \"Current low Medicaid reimbursement creates ghost networks and provider discrimination. Premium payments above Medicare are necessary to overcome Medicaid stigma and ensure real access. Studies show Medicaid patients face documented access barriers and discrimination due to low payment rates. Higher rates are investment in access equity, not inefficiency.\",\n            \"risk_if_consensus\": \"Consensus rates perpetuate access problems that plague current Medicaid managed care. Providers will limit Medicaid slots, maintain ghost networks, and provide lower-quality care. The AI efficiency gains will be undermined by provider network inadequacy, forcing patients back to emergency departments and safety-net providers.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"patient_escalation_mechanism\",\n            \"consensus_value\": \"callback_within_1hr\",\n            \"my_value\": \"one_click_anytime\",\n            \"rationale\": \"One-hour callback creates two-tier system where wealthy patients get immediate human access while Medicaid patients wait. Patient autonomy requires immediate access to human physician when desired. This is fundamental equity principle - equal access to human clinical judgment regardless of insurance status.\",\n            \"risk_if_consensus\": \"Delayed escalation creates inferior care experience for Medicaid patients compared to privately insured patients who can access private physicians immediately. One-hour delay may be critical for anxiety, pain, or urgent concerns. This institutionalizes second-class healthcare for vulnerable populations.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"transparency_level\",\n            \"consensus_value\": \"annual_public_report\",\n            \"my_value\": \"full_public_dashboard\",\n            \"rationale\": \"Medicaid patients deserve same transparency as other patients about AI performance, safety metrics, and quality outcomes. Full public dashboard enables informed consent about AI care and community oversight of performance. Annual reporting is insufficient for rapid identification of problems or community accountability.\",\n            \"risk_if_consensus\": \"Limited transparency prevents patients from making informed decisions about AI care and reduces community accountability. Problems with AI performance, bias, or safety will be hidden until annual reports, delaying corrective action. This reduces trust and community engagement essential for serving vulnerable populations.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design has significant risks for Medicaid patients due to insufficient safeguards against underservice and inadequate patient governance. The combination of full capitation, two-sided risk, high-acuity-only escalation, and AI chronic disease management creates dangerous incentives to provide minimal care to vulnerable populations who cannot effectively advocate for themselves. While the AI ACO concept is sound, the consensus parameters replicate the worst aspects of 1990s managed care with sophisticated AI tools for service restriction. My dissents address fundamental equity and safety concerns that, if unaddressed, could lead to a two-tier healthcare system where Medicaid patients receive algorithmic care while others receive human clinical judgment. The design is viable if modified to include stronger patient protections and governance rights.\"\n}\n```",
+    "fqhc_operator": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"payment_structure.payment_model\",\n            \"parameter\": \"payment_model\",\n            \"consensus_value\": \"full_capitation\",\n            \"my_value\": \"hybrid_cap_ffs\",\n            \"rationale\": \"Full capitation would eliminate FQHC Prospective Payment System (PPS) encounter-based payments, which are federally mandated under Section 1902(bb) of the Social Security Act. This would jeopardize FQHC 340B drug pricing eligibility, which requires encounter-based billing to maintain covered entity status (HRSA 340B Policy Release 2016-2). FQHCs depend on 340B savings averaging $3.8M annually per site (340B Coalition Impact Study 2022) to subsidize care for uninsured and underinsured patients. Additionally, HRSA Section 330 grant compliance requires encounter reporting that full capitation would complicate.\",\n            \"risk_if_consensus\": \"FQHC network collapse due to loss of federal funding streams and 340B eligibility. This would eliminate primary care access for 30 million Americans, disproportionately impacting rural and underserved communities where FQHCs are often the only healthcare providers. The AI ACO would lack physical infrastructure to deliver care requiring examination or procedures.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"sdoh_integration.chw_ratio\",\n            \"parameter\": \"chw_ratio\", \n            \"consensus_value\": 2.5,\n            \"my_value\": 3.0,\n            \"rationale\": \"Medicaid beneficiaries have significantly higher social determinant needs than general populations. FQHC patient data shows 78% report food insecurity, 65% housing instability, and 45% transportation barriers (NACHC Social Needs Assessment 2023). Our network's experience with CHW deployment shows 2.5:1000 ratio insufficient for meaningful impact - patients receive average 2.1 contacts annually, below the 4+ contacts needed for behavior change (CHW Effectiveness Study, AJPH 2022). Rural areas particularly need intensive CHW support due to limited social services infrastructure.\",\n            \"risk_if_consensus\": \"Inadequate SDOH intervention leading to continued high emergency department utilization and preventable hospitalizations. CHW programs with <3:1000 ratios show minimal impact on health outcomes or cost reduction (Cochrane CHW Review 2021). This undermines the AI ACO's value proposition of addressing root causes of health disparities.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"rural_urban.rural_delivery_model\",\n            \"parameter\": \"rural_delivery_model\",\n            \"consensus_value\": \"virtual_plus_mobile\",\n            \"my_value\": \"fqhc_partnership\", \n            \"rationale\": \"Virtual-plus-mobile model ignores existing rural health infrastructure and federal requirements. Rural FQHCs receive enhanced federal funding specifically to serve as comprehensive primary care homes in underserved areas (HRSA Rural Health Policy 2023). Mobile units cannot provide the full scope of FQHC services including behavioral health integration, care coordination, and enabling services. Additionally, 340B covered entity status requires fixed service delivery sites - mobile units would jeopardize this critical funding stream. Rural communities have established trust relationships with FQHCs that virtual-first models cannot replicate.\",\n            \"risk_if_consensus\": \"Destruction of rural health safety net infrastructure built over decades with federal investment. Rural hospital closures would accelerate as primary care volume shifts to virtual-only model, eliminating emergency services and inpatient capacity. Loss of community-based care coordination and behavioral health integration. Violation of federal rural health policy requiring comprehensive primary care access.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"clinical_model.encounter_modality_mix\", \n            \"parameter\": \"encounter_modality_mix\",\n            \"consensus_value\": 32.5,\n            \"my_value\": 40.0,\n            \"rationale\": \"FQHC patient populations have lower digital literacy rates and prefer synchronous interaction for building trust and ensuring understanding. Our telehealth data during COVID showed 68% patient preference for synchronous over asynchronous encounters (FQHC Telehealth Evaluation 2021). Medicaid beneficiaries often have complex psychosocial factors requiring real-time clinical assessment and relationship building that asynchronous text-based care cannot provide. Language barriers and health literacy issues make synchronous communication essential for care quality.\",\n            \"risk_if_consensus\": \"Poor patient experience and clinical outcomes due to inadequate communication modality for vulnerable populations. Increased health disparities as patients with limited digital literacy receive lower-quality asynchronous care. Reduced care plan adherence and patient engagement leading to worse chronic disease management.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design has significant structural risks that could undermine its viability. The full capitation payment model poses an existential threat to FQHC participation by eliminating federally mandated PPS payments and jeopardizing 340B eligibility - this could collapse the primary care safety net that serves 30 million Americans. The virtual-plus-mobile rural model similarly ignores existing federal health policy and infrastructure investments. However, the core AI clinical model and governance framework are sound. With modifications to preserve FQHC financial sustainability and rural infrastructure, the design could successfully improve Medicaid delivery while maintaining safety net access. The key is ensuring the AI ACO strengthens rather than replaces existing community-based providers who have earned patient trust and understand local health needs.\"\n}\n```",
+    "ethicist": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"payment_structure.capitation_pmpm\",\n            \"consensus_value\": 437.5,\n            \"my_value\": 485.0,\n            \"rationale\": \"Ethical AI for vulnerable populations requires premium investment in bias monitoring, algorithmic auditing, explainability systems, and enhanced human oversight that consensus budget cannot support. Obermeyer et al. (Science 2019) demonstrated that algorithmic bias emerges from cost-cutting pressures. The consensus $437.50 PMPM represents only 3% reduction from current MCO rates, insufficient to fund the ethical infrastructure required. My $485 PMPM allows 8% premium for comprehensive bias auditing, full explainability systems, enhanced physician supervision, and community accountability mechanisms.\",\n            \"risk_if_consensus\": \"Insufficient funding will force trade-offs between AI safety and cost control, creating exactly the conditions that generate algorithmic bias documented in the literature. The AI ACO will be unable to maintain the ethical standards required for vulnerable populations, potentially replicating or amplifying existing healthcare disparities through under-resourced AI systems.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"provider_rates.specialist_rate_pct_medicare\",\n            \"consensus_value\": 95.0,\n            \"my_value\": 110.0,\n            \"rationale\": \"Decker (Health Affairs 2012) and Polsky et al. (Health Affairs 2015) demonstrated that Medicaid specialist access is highly correlated with payment rates. The consensus 95% of Medicare rate perpetuates the two-tier medicine problem the AI ACO is designed to solve. Medicaid beneficiaries already face substantial specialist access barriers due to low payment rates. Premium rates at 110% of Medicare are ethically required to ensure equal access and prevent AI from becoming a justification for maintaining inferior care for vulnerable populations.\",\n            \"risk_if_consensus\": \"Specialist access barriers will persist, creating a two-tier system where AI ACO members receive inferior specialist care compared to privately insured patients. This violates the fundamental ethical principle that AI care must be equal or better than traditional care, not a cost-cutting mechanism that reduces access for vulnerable populations.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"provider_rates.hospital_rate_pct_medicare\",\n            \"consensus_value\": 110.0,\n            \"my_value\": 105.0,\n            \"rationale\": \"Hospital payments represent the largest component of medical spending and must be controlled to ensure overall model sustainability. Unlike physician services where access is the primary concern, hospital services are more readily available. The consensus 110% rate consumes excessive resources that should be allocated to enhanced physician supervision, AI safety systems, and community health worker programs. A modest 105% premium ensures hospital participation while preserving funds for ethical AI infrastructure.\",\n            \"risk_if_consensus\": \"Excessive hospital payments will crowd out funding for AI safety systems, bias monitoring, and enhanced human oversight. The model's financial sustainability will be compromised, potentially forcing cuts to the ethical safeguards that make AI care appropriate for vulnerable populations.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"ai_architecture.explainability_requirement\",\n            \"consensus_value\": \"key_factors_only\",\n            \"my_value\": \"full_reasoning_chain\",\n            \"rationale\": \"Beauchamp & Childress autonomy principle requires that patients understand the reasoning behind clinical decisions affecting them. When AI makes clinical decisions for vulnerable populations who often face discrimination and medical mistrust, full transparency is ethically mandatory. The EU AI Act and emerging FDA guidance on AI explainability support comprehensive transparency for high-risk AI applications. Key factors alone are insufficient for informed consent and physician oversight.\",\n            \"risk_if_consensus\": \"Patients cannot provide truly informed consent for AI care without understanding the complete reasoning process. Physicians cannot adequately supervise AI decisions without full visibility into the decision-making process. This creates liability risks and undermines the trust necessary for AI acceptance among vulnerable populations who have experienced medical discrimination.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"human_oversight.patient_escalation_mechanism\",\n            \"consensus_value\": \"callback_within_1hr\",\n            \"my_value\": \"one_click_anytime\",\n            \"rationale\": \"Patient autonomy requires immediate access to human physicians upon request. Vulnerable populations often have communication barriers, cultural preferences, or complex psychosocial needs that require human interaction. The one-hour delay violates autonomy principles and may discourage patients from seeking needed human care. The marginal cost of immediate escalation is justified by the ethical imperative to preserve patient choice and autonomy in AI-driven care.\",\n            \"risk_if_consensus\": \"Patients will be deterred from requesting human care due to callback delays, potentially missing important clinical or psychosocial issues that AI cannot address. This creates a coercive environment where patients accept AI care not by choice but due to barriers to human alternatives, violating informed consent principles.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"ethical_governance.transparency_level\",\n            \"consensus_value\": \"annual_public_report\",\n            \"my_value\": \"full_public_dashboard\",\n            \"rationale\": \"When AI makes clinical decisions for vulnerable populations using public funds, maximum transparency is ethically required. Real-time public dashboards enable external oversight by advocacy groups, researchers, and community organizations that annual reports cannot provide. The Medicaid population has historically faced discrimination and deserves the highest level of accountability. Full transparency also enables rapid identification and correction of bias or safety issues.\",\n            \"risk_if_consensus\": \"Annual reporting is insufficient for detecting emerging AI bias or safety issues. External stakeholders cannot provide meaningful oversight with year-old data. The AI ACO will lack the external accountability pressure necessary to maintain high ethical standards, particularly as operational pressures mount over time.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design has significant ethical risks that could undermine its viability for vulnerable populations. While the basic structure is sound, the consensus underestimates the premium investment required for ethical AI deployment among vulnerable populations. The combination of insufficient funding ($437.50 PMPM), limited specialist access (95% Medicare), restricted explainability (key factors only), and delayed patient escalation (1-hour callback) creates conditions that could replicate existing healthcare disparities through AI systems. My dissents address these fundamental ethical requirements: adequate funding for bias monitoring and safety systems, equal specialist access, full transparency for informed consent, and immediate patient autonomy protection. Without these safeguards, the AI ACO risks becoming a two-tier system that provides inferior care to vulnerable populations under the guise of innovation. The model is potentially viable with my proposed modifications, but the consensus version carries unacceptable ethical risks for the Medicaid population it would serve.\"\n}\n```",
+    "actuary": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"clinical_model.ai_encounter_share\",\n            \"consensus_value\": 57.5,\n            \"my_value\": 45.0,\n            \"rationale\": \"As an actuary, I must prioritize financial viability over aspirational targets. Professional liability insurance for AI-supervised care is unproven and may be prohibitively expensive. Society of Actuaries guidance requires conservative assumptions for new risk categories. 45% provides adequate efficiency gains while maintaining insurability.\",\n            \"risk_if_consensus\": \"Uninsurable malpractice exposure could make the AI ACO financially unviable. Even one major malpractice settlement could exceed annual reserves. Higher AI share increases both frequency and severity of potential claims.\",\n            \"strength\": \"strong\"\n        },\n        {\n            \"domain\": \"clinical_model.encounter_modality_mix\",\n            \"consensus_value\": 32.5,\n            \"my_value\": 25.0,\n            \"rationale\": \"Administrative cost savings are the primary financial driver for AI ACO viability. Asynchronous care reduces physician labor costs by 60-70% versus synchronous encounters. My actuarial models show 25% synchronous is the maximum viable for achieving required 5-7 percentage point administrative savings.\",\n            \"risk_if_consensus\": \"Higher synchronous percentage erodes the core economic advantage of AI delivery. May result in capitation rates that are not actuarially sound, requiring state subsidy or leading to financial insolvency.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"payment_structure.shared_savings_split\",\n            \"consensus_value\": 60.0,\n            \"my_value\": 50.0,\n            \"rationale\": \"Startup health plans have 3-year failure rates of 40-50% per NAIC data. A 50% savings split provides more conservative financial cushion during the critical startup phase. State Medicaid agencies are risk-averse and may prefer lower ACO share for budget predictability.\",\n            \"risk_if_consensus\": \"While 60% provides stronger efficiency incentives, it may be politically unacceptable to state Medicaid directors facing budget pressure. 50% split more likely to gain state approval.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"org_structure.board_composition\",\n            \"consensus_value\": 40.0,\n            \"my_value\": 35.0,\n            \"rationale\": \"Fiduciary duty requires board members with healthcare finance and actuarial expertise. Medicaid beneficiaries, while deserving representation, may lack technical knowledge for complex financial oversight. 35% provides meaningful voice while ensuring actuarial competence.\",\n            \"risk_if_consensus\": \"Board decisions on reserves, reinsurance, and risk management require actuarial sophistication. 40% beneficiary representation may compromise financial oversight capability, increasing insolvency risk.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"regulatory_pathway.implementation_timeline\",\n            \"consensus_value\": 27.0,\n            \"my_value\": 30.0,\n            \"rationale\": \"Section 1115 waiver approval with AI clinical components is unprecedented and will face extensive CMS review. My experience with complex Medicaid waivers suggests 30 months minimum for novel delivery models. Rushing implementation increases regulatory rejection risk.\",\n            \"risk_if_consensus\": \"Compressed timeline may result in incomplete regulatory preparation, leading to waiver denial or extensive CMS conditions that compromise the AI delivery model. Better to plan conservatively.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"human_oversight.retrospective_audit_pct\",\n            \"consensus_value\": 22.5,\n            \"my_value\": 20.0,\n            \"rationale\": \"Audit costs average $15-20 per medical record reviewed. At 22.5% audit rate with projected 4 encounters PMPM, audit costs would be $13.50 PMPM - consuming over half of projected administrative savings. 20% provides adequate oversight at manageable cost.\",\n            \"risk_if_consensus\": \"Higher audit percentage erodes financial viability by increasing administrative costs. May require higher capitation rates that eliminate budget neutrality for state Medicaid programs.\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"rural_urban.telehealth_infrastructure_investment\",\n            \"consensus_value\": 71.25,\n            \"my_value\": 67.5,\n            \"rationale\": \"Moving toward group median recognizes rural infrastructure needs while maintaining fiscal discipline. My original $50 was too conservative - rural AI delivery requires substantial technology investment for success.\",\n            \"risk_if_consensus\": \"Consensus value is within acceptable range. This represents convergence rather than dissent - acknowledging that rural infrastructure investment is essential for model success.\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design has moderate financial risks but is fundamentally viable. My primary concerns are: (1) Professional liability exposure from 57.5% AI encounter share may be uninsurable, creating existential risk; (2) Higher synchronous encounter percentage erodes core economic advantages; (3) Compressed implementation timeline increases regulatory approval risk. However, the consensus correctly identifies that conservative actuarial approaches must be balanced against innovation requirements. The design's nonprofit structure, comprehensive quality framework, and phased implementation provide adequate risk mitigation. With appropriate reinsurance (attachment point $250K, 90% coinsurance) and 300% RBC capital requirements, the AI ACO should achieve actuarial soundness. The consensus design represents a reasonable balance between innovation and financial prudence, though my dissents would improve long-term viability.\"\n}\n```",
+    "hsr": "```json\n{\n    \"dissents\": [\n        {\n            \"domain\": \"org_structure.board_composition\",\n            \"consensus_value\": 40.0,\n            \"my_value\": 30.0,\n            \"rationale\": \"Governance literature shows consumer majorities on healthcare boards create decision-making dysfunction without improving accountability (Alexander et al. 2006, Health Affairs). The most successful community health centers maintain 30-35% consumer representation with clinical/operational expertise filling remaining seats. Higher percentages risk paralyzing governance over operational decisions requiring technical expertise.\",\n            \"risk_if_consensus\": \"Board gridlock on operational decisions, difficulty recruiting qualified non-consumer board members, and potential governance dysfunction that could threaten ACO financial viability and clinical quality\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"human_oversight.retrospective_audit_pct\",\n            \"consensus_value\": 22.5,\n            \"my_value\": 15.0,\n            \"rationale\": \"Medical record audit literature shows diminishing returns above 15% audit rates (Casalino et al. 2003, JAMA). Most quality issues are detected in first 10-15% of records reviewed. Higher audit percentages create physician burden without proportional safety benefit, and divert physician time from direct patient care and real-time supervision.\",\n            \"risk_if_consensus\": \"Excessive physician time diverted to chart review, increased operational costs, and potential physician resistance to AI ACO model due to perceived micromanagement. Resources better allocated to real-time oversight and patient care\",\n            \"strength\": \"moderate\"\n        },\n        {\n            \"domain\": \"rural_urban.telehealth_infrastructure_investment\",\n            \"consensus_value\": 71.25,\n            \"my_value\": 50.0,\n            \"rationale\": \"HRSA telehealth program evaluations show adequate rural connectivity achieved at $40-60 per member annually (HRSA Health Professional Shortage Area report 2022). Higher spending shows diminishing returns, and cost-effectiveness analysis favors conservative infrastructure investment with reinvestment of savings in direct patient services.\",\n            \"risk_if_consensus\": \"Excessive infrastructure spending that could be better allocated to clinical services, CHW programs, or SDOH interventions. May threaten overall ACO financial sustainability without proportional access improvement\",\n            \"strength\": \"moderate\"\n        }\n    ],\n    \"overall_viability_assessment\": \"The consensus design is viable with manageable risks. My dissents address operational efficiency rather than fundamental design flaws. The 40% consumer board representation may create governance challenges but is unlikely to prevent ACO function. The 22.5% audit rate is higher than optimal but within feasible range. The rural infrastructure investment is generous but not prohibitive. The core design elements - AI clinical model, payment structure, quality framework, and regulatory pathway - are sound and evidence-based. The consensus represents a reasonable balance of stakeholder priorities that could successfully launch and operate an AI-first Medicaid ACO.\"\n}\n```"
+  },
+  "convergence_history": {
+    "clinical_model": [
+      0.20833898056202652,
+      0.13605639711323936,
+      0.1165717218397094
+    ],
+    "payment_structure": [
+      0.13053763714152225,
+      0.1041038390685514,
+      0.10248270207481598
+    ],
+    "provider_rates": [
+      0.12465674997684664,
+      0.08112950467337196,
+      0.08112950467337196
+    ],
+    "org_structure": [
+      0.029930255692845485,
+      0.027962939284018384,
+      0.026190466737674396
+    ],
+    "regulatory_pathway": [
+      0.0318688719599549,
+      0.02222222222222222,
+      0.02222222222222222
+    ],
+    "quality_framework": [
+      0.11331461209611593,
+      0.09075611775709254,
+      0.09075611775709254
+    ],
+    "ai_architecture": [
+      0.09523809523809526,
+      0.075,
+      0.075
+    ],
+    "human_oversight": [
+      0.3882685178867886,
+      0.24577224128680322,
+      0.22920966894397146
+    ],
+    "sdoh_integration": [
+      0.12130828491638737,
+      0.09926974032004901,
+      0.09926974032004901
+    ],
+    "rural_urban": [
+      0.15277573223168933,
+      0.10763569759322526,
+      0.10039166325153163
+    ],
+    "anti_monopoly": [
+      0.09047619047619046,
+      0.075,
+      0.075
+    ],
+    "ethical_governance": [
+      0.09047619047619046,
+      0.075,
+      0.075
+    ]
+  },
+  "total_rounds": 3,
+  "converged": true,
+  "final_converged_domains": [
+    "clinical_model",
+    "payment_structure",
+    "provider_rates",
+    "org_structure",
+    "regulatory_pathway",
+    "quality_framework",
+    "ai_architecture",
+    "sdoh_integration",
+    "rural_urban",
+    "anti_monopoly",
+    "ethical_governance"
+  ],
+  "method": "modified_delphi"
+}

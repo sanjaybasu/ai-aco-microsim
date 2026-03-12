@@ -1,0 +1,30 @@
+{
+  "round_num": 11,
+  "proposals": {
+    "economist": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "regulator": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "patient_advocate": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "physician": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "fqhc_operator": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "ethicist": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "actuary": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}",
+    "hsr": "{\"error\": \"\\\"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\\\"\"}"
+  },
+  "critiques": {},
+  "convergence_scores": {
+    "clinical_model": 1.0,
+    "payment_structure": 1.0,
+    "provider_rates": 1.0,
+    "org_structure": 1.0,
+    "regulatory_pathway": 1.0,
+    "quality_framework": 1.0,
+    "ai_architecture": 1.0,
+    "human_oversight": 1.0,
+    "sdoh_integration": 1.0,
+    "rural_urban": 1.0,
+    "anti_monopoly": 1.0,
+    "ethical_governance": 1.0
+  },
+  "converged_domains": [],
+  "timestamp": 1773173059.6400042
+}

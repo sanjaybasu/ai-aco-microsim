@@ -36,6 +36,35 @@ RURAL_DETECT_PENALTY = -0.08
 RURAL_CERT_PENALTY = -0.06
 
 
+def referral_access_factor(rate_pct_medicare: float) -> float:
+    """
+    Map provider reimbursement rate (% of Medicare) to referral access factor.
+
+    Models the empirical relationship between Medicaid payment rates and
+    provider participation / appointment availability:
+      - At  75% Medicare: ~58.7% appointment availability (Polsky et al. 2017)
+      - At 100% Medicare: ~66.4% (ACA temporary fee bump; Polsky et al. 2017)
+      - At 125% Medicare: ~80%  (extrapolated toward private-insurance levels)
+
+    Returns a factor in [0, 1] representing effective referral access
+    relative to the 125% benchmark (consensus design).  Factor = 1.0 at 125%.
+
+    This factor attenuates the clinical benefit of AI ACO interventions
+    for the portion of care requiring human provider referrals (specialist,
+    hospital, physical exams beyond FQHCs).  AI virtual encounters (58%)
+    are NOT affected because they do not depend on network adequacy.
+
+    Source:
+        Polsky D, et al. JAMA Intern Med 2017;177:588-590.
+        Candon M, et al. JAMA Intern Med 2018;178:145-146.
+    """
+    # Logistic curve fitted to (75, 0.587), (100, 0.664), (125, 0.80)
+    # availability(r) = 0.40 + 0.50 / (1 + exp(-0.04 * (r - 88)))
+    availability = 0.40 + 0.50 / (1.0 + np.exp(-0.04 * (rate_pct_medicare - 88)))
+    availability_at_125 = 0.40 + 0.50 / (1.0 + np.exp(-0.04 * (125 - 88)))
+    return float(min(1.0, availability / availability_at_125))
+
+
 # Race-stratified risk tier distributions from MEPS 2022 / HCUP 2022
 # Reflects higher chronic disease burden among Black and AIAN Medicaid adults
 # Source: AHRQ MEPS HC-243 (Table 4.1b), HCUP Medicaid Statistical Brief #278
@@ -157,7 +186,7 @@ def simulate_scenario(
             # (phone-only pathway)
             tier_has_digital = has_digital_access[mask]
         elif scenario == "enhanced_ffs":
-            # Enhanced FFS: modest improvement over SQ
+            # Care coordination only: modest improvement over SQ
             p_out = min(0.95, params["sq_cascade"][tier]["outreach"] * 1.05)
             p_agr = min(0.80, params["sq_cascade"][tier]["agreement"] * 1.10)
             p_eng = params["sq_cascade"][tier]["engagement"]
@@ -214,6 +243,18 @@ def simulate_scenario(
             elif scenario == "ai_aco_pessimistic":
                 rr_hosp *= 0.5  # lower bound
                 rr_ed *= 0.5
+
+            # --- Network adequacy attenuation ---
+            # AI virtual encounters (ai_encounter_share) bypass network;
+            # the remaining fraction depends on provider participation,
+            # which is a function of reimbursement rates.
+            ai_share = params.get("ai_encounter_share", 0.58)
+            rate = params.get("provider_rate_pct_medicare", 125.0)
+            ref_factor = referral_access_factor(rate)
+            # Effective RR = full RR for AI-direct share + attenuated for referral share
+            network_factor = ai_share + (1.0 - ai_share) * ref_factor
+            rr_hosp *= network_factor
+            rr_ed *= network_factor
 
             # Engaged patients get intervention effect
             hosp_engaged = base_hosp * (1.0 - rr_hosp)
@@ -275,10 +316,21 @@ def simulate_scenario(
     # ===================================================================
     if scenario in ("sq_mco", "admin_only"):
         hedis_closure = params["sq_hedis_closure"]
-    elif scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_universal"):
-        hedis_closure = params["ai_hedis_closure"]
-    elif scenario == "ai_aco_pessimistic":
-        hedis_closure = (params["sq_hedis_closure"] + params["ai_hedis_closure"]) / 2
+    elif scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal"):
+        # HEDIS gap closure depends on completing care chains (screening → referral → treatment).
+        # AI handles screening/outreach directly, but referral completion depends on network.
+        ai_share = params.get("ai_encounter_share", 0.58)
+        rate = params.get("provider_rate_pct_medicare", 125.0)
+        ref_factor = referral_access_factor(rate)
+        hedis_network_factor = ai_share + (1.0 - ai_share) * ref_factor
+
+        base_ai_hedis = params["ai_hedis_closure"]
+        if scenario == "ai_aco_pessimistic":
+            base_ai_hedis = (params["sq_hedis_closure"] + params["ai_hedis_closure"]) / 2
+
+        # Effective HEDIS = SQ baseline + (AI improvement × network factor)
+        hedis_improvement = base_ai_hedis - params["sq_hedis_closure"]
+        hedis_closure = params["sq_hedis_closure"] + hedis_improvement * hedis_network_factor
     elif scenario == "enhanced_ffs":
         hedis_closure = params["sq_hedis_closure"] * 1.05
 
@@ -358,6 +410,34 @@ def simulate_scenario(
             "ed_per_1000": float(np.sum(ed_events[race_mask] * race_w) * 1000),
         }
 
+    # Equity: by metro status
+    equity_by_metro = {}
+    for metro_val in ["metro", "nonmetro"]:
+        metro_mask = metros == metro_val
+        if metro_mask.sum() == 0:
+            continue
+        metro_w = weights[metro_mask] / weights[metro_mask].sum()
+        equity_by_metro[metro_val] = {
+            "engagement_rate": float(np.sum(engaged[metro_mask].astype(float) * metro_w)),
+            "hosp_per_1000": float(np.sum(hosp_events[metro_mask] * metro_w) * 1000),
+            "ed_per_1000": float(np.sum(ed_events[metro_mask] * metro_w) * 1000),
+        }
+
+    # Equity: race × metro cross-tabulation
+    equity_race_metro = {}
+    for race in ["white", "black", "hispanic", "aian"]:
+        for metro_val in ["metro", "nonmetro"]:
+            mask = (races == race) & (metros == metro_val)
+            if mask.sum() == 0:
+                continue
+            sub_w = weights[mask] / weights[mask].sum()
+            equity_race_metro[f"{race}_{metro_val}"] = {
+                "engagement_rate": float(np.sum(engaged[mask].astype(float) * sub_w)),
+                "hosp_per_1000": float(np.sum(hosp_events[mask] * sub_w) * 1000),
+                "ed_per_1000": float(np.sum(ed_events[mask] * sub_w) * 1000),
+                "n_unweighted": int(mask.sum()),
+            }
+
     # Racial disparity index (B-W gap in hospitalization)
     bw_hosp_gap = abs(
         equity_by_race.get("black", {}).get("hosp_per_1000", 0)
@@ -375,6 +455,8 @@ def simulate_scenario(
         "hedis_racial_gap": hedis_racial_gap,
         "admin_cost_pct": admin_cost_pct,
         "equity_by_race": equity_by_race,
+        "equity_by_metro": equity_by_metro,
+        "equity_race_metro": equity_race_metro,
         "bw_hosp_gap": bw_hosp_gap,
         "detection_rate_overall": float(np.sum(detected.astype(float) * w)),
         "certification_rate_overall": float(np.sum(certified.astype(float) * w)),
@@ -453,3 +535,82 @@ def summarize_psa(results_df: pd.DataFrame) -> pd.DataFrame:
         summary_rows.append(row)
 
     return pd.DataFrame(summary_rows)
+
+
+def run_rate_sensitivity(
+    df: pd.DataFrame,
+    rate_levels: Optional[List[float]] = None,
+    n_iterations: int = 1000,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """
+    Run provider rate sensitivity analysis for the AI ACO scenario.
+
+    Varies provider_rate_pct_medicare across levels while holding all
+    other parameters at consensus values. For each rate level, runs
+    full PSA and returns summary statistics.
+
+    Args:
+        df: ACS PUMS population DataFrame
+        rate_levels: Provider rates as % of Medicare (default: 75, 100, 110, 125)
+        n_iterations: PSA iterations per rate level
+        seed: Random seed
+
+    Returns:
+        DataFrame with columns: rate_pct_medicare, plus all outcome summaries.
+    """
+    if rate_levels is None:
+        rate_levels = [75, 100, 110, 125]
+
+    psa_params = AIACOPSAParameters()
+    all_rows = []
+
+    # Use same parameter draws across all rate levels for clean paired comparison.
+    # Pre-generate parameter sets and RNG states.
+    rng_master = np.random.default_rng(seed)
+    param_draws = []
+    for i in range(n_iterations):
+        param_draws.append(psa_params.sample())
+
+    for rate in rate_levels:
+        logger.info(f"Rate sensitivity: {rate}% of Medicare ({n_iterations} iterations)")
+
+        for i in range(n_iterations):
+            # Use SAME base parameters for both SQ and AI at this iteration
+            import copy
+            base_params = copy.deepcopy(param_draws[i])
+            rng = np.random.default_rng(seed + i)  # deterministic per iteration
+
+            # SQ MCO: always at 75% rate (current Medicaid)
+            params_sq = copy.deepcopy(base_params)
+            params_sq["provider_rate_pct_medicare"] = 75.0
+            result_sq = simulate_scenario(df, params_sq, "sq_mco", rng)
+
+            # AI ACO at this rate level
+            rng = np.random.default_rng(seed + i)  # reset RNG for paired comparison
+            params_ai = copy.deepcopy(base_params)
+            params_ai["provider_rate_pct_medicare"] = rate
+            # Adjust PCP visit cost proportional to rate
+            pcp_cost_ratio = rate / 125.0
+            params_ai["costs"]["pcp"] = base_params["costs"]["pcp"] * pcp_cost_ratio
+            result_ai = simulate_scenario(df, params_ai, "ai_aco", rng)
+
+            all_rows.append({
+                "rate_pct_medicare": rate,
+                "iteration": i,
+                "ai_hosp": result_ai["hosp_per_1000"],
+                "ai_ed": result_ai["ed_per_1000"],
+                "ai_pmpm": result_ai["pmpm"],
+                "ai_hedis": result_ai["hedis_gap_closure"],
+                "ai_engagement": result_ai["engagement_rate"],
+                "sq_hosp": result_sq["hosp_per_1000"],
+                "sq_ed": result_sq["ed_per_1000"],
+                "sq_pmpm": result_sq["pmpm"],
+                "sq_hedis": result_sq["hedis_gap_closure"],
+                "hosp_reduction": result_sq["hosp_per_1000"] - result_ai["hosp_per_1000"],
+                "ed_reduction": result_sq["ed_per_1000"] - result_ai["ed_per_1000"],
+                "pmpm_savings": result_sq["pmpm"] - result_ai["pmpm"],
+                "hedis_improvement": result_ai["hedis_gap_closure"] - result_sq["hedis_gap_closure"],
+            })
+
+    return pd.DataFrame(all_rows)

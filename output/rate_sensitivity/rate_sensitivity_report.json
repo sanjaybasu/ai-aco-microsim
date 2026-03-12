@@ -1,0 +1,91 @@
+{
+  "description": "Provider rate sensitivity analysis: AI ACO outcomes at different reimbursement levels",
+  "mechanism": "rate -> network adequacy -> referral completion -> attenuated clinical benefits",
+  "ai_encounter_share": 0.58,
+  "results_by_rate": [
+    {
+      "rate_pct_medicare": 75,
+      "referral_access_factor": 0.726,
+      "hosp_reduction_per_1000": 13.3,
+      "hosp_reduction_95ui": [
+        7.5,
+        20.8
+      ],
+      "ed_reduction_per_1000": 35.3,
+      "ed_reduction_95ui": [
+        20.6,
+        53.9
+      ],
+      "pmpm_savings": 52.6,
+      "pmpm_savings_95ui": [
+        28.7,
+        87.7
+      ],
+      "hedis_improvement_pp": 13.3,
+      "prob_net_savings": 1.0
+    },
+    {
+      "rate_pct_medicare": 100,
+      "referral_access_factor": 0.878,
+      "hosp_reduction_per_1000": 14.0,
+      "hosp_reduction_95ui": [
+        8.1,
+        22.1
+      ],
+      "ed_reduction_per_1000": 37.0,
+      "ed_reduction_95ui": [
+        22.0,
+        57.4
+      ],
+      "pmpm_savings": 45.6,
+      "pmpm_savings_95ui": [
+        22.1,
+        80.7
+      ],
+      "hedis_improvement_pp": 14.3,
+      "prob_net_savings": 1.0
+    },
+    {
+      "rate_pct_medicare": 110,
+      "referral_access_factor": 0.933,
+      "hosp_reduction_per_1000": 14.3,
+      "hosp_reduction_95ui": [
+        8.2,
+        22.6
+      ],
+      "ed_reduction_per_1000": 37.6,
+      "ed_reduction_95ui": [
+        21.4,
+        59.6
+      ],
+      "pmpm_savings": 42.8,
+      "pmpm_savings_95ui": [
+        18.5,
+        79.0
+      ],
+      "hedis_improvement_pp": 14.6,
+      "prob_net_savings": 1.0
+    },
+    {
+      "rate_pct_medicare": 125,
+      "referral_access_factor": 1.0,
+      "hosp_reduction_per_1000": 14.6,
+      "hosp_reduction_95ui": [
+        8.0,
+        22.9
+      ],
+      "ed_reduction_per_1000": 38.5,
+      "ed_reduction_95ui": [
+        22.9,
+        63.0
+      ],
+      "pmpm_savings": 38.5,
+      "pmpm_savings_95ui": [
+        13.6,
+        76.1
+      ],
+      "hedis_improvement_pp": 15.1,
+      "prob_net_savings": 1.0
+    }
+  ]
+}
