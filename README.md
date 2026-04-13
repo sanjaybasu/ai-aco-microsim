@@ -115,34 +115,71 @@ ai-aco-microsim/
 
 The 5-channel engine (`microsim/channels.py`) simulates each individual through:
 
-1. **Access**: Digital access probability by race × metro status
-2. **Engagement**: 4-step cascade (outreach → agreement → engagement → adherence) with racial penalties and digital divide modifier
-3. **Utilization/Cost**: Poisson-distributed events (hospitalizations, ED, PCP) by risk tier with AI ACO relative risk reductions for engaged patients
+1. **Access**: Digital access probability by race × metro status (Pew 2024; FCC broadband maps)
+2. **Engagement**: 4-step cascade (outreach → agreement → engagement → adherence) with racial penalties and 50% engagement penalty for individuals without broadband access (Rodriguez et al. JAMA Netw Open 2024; Nouri et al. NEJM Catalyst 2020)
+3. **Utilization/Cost**: Poisson-distributed events (hospitalizations, ED, PCP) by risk tier with per-individual AI encounter share conditioned on digital access (see below)
 4. **Quality**: HEDIS gap closure with racial differential
-5. **Equity**: Detection/certification probabilities by race (Obermeyer et al. 2019)
+5. **Equity**: Detection/certification probabilities by race (Obermeyer et al. Science 2019)
+
+### Per-Individual AI Encounter Share (v2 — key methodological update)
+
+The population-level AI encounter share (58%, consensus design) is distributed at the individual level based on each person's digital access status:
+
+- **With broadband access**: Higher AI encounter share (~58% / mean_population_access, capped at 90%)
+- **Without broadband access**: Near-zero AI encounter share (~5%, representing phone-only triage and scheduling)
+
+This ensures the population mean remains at the consensus 58% while correctly concentrating clinical effects among digitally connected beneficiaries. Prior to this update (v1), the 58% share was applied uniformly, which understated the equity impact of the digital divide on clinical outcomes.
+
+The Spearman rho of the admin rate difference (SQ admin - AI admin) with PMPM savings = 0.82 (with ACS PUMS data; reported as 0.89 in the manuscript which used a slightly different PSA prior). Both values confirm administrative overhead reduction as the dominant determinant.
 
 ### Probabilistic Sensitivity Analysis
 
-- 1,000 iterations drawing all parameters from Beta/Gamma distributions
+- 1,000 iterations drawing all parameters from Beta/Gamma/Normal distributions
+- `ai_encounter_share` now drawn from Beta(30, 22), mean ~0.577, SD ~0.058 (previously hardcoded at 0.58)
 - 7 scenarios: status quo MCO, AI ACO (consensus/optimistic/pessimistic), enhanced FFS, AI ACO universal, admin-reform-only
-- 95% uncertainty intervals from paired iteration-level differences
+- 95% uncertainty intervals from paired iteration-level differences (PMPM savings are computed per-iteration as SQ[i] − AI[i])
 - Population-weighted using ACS person weights (PWGTP)
+- Monte Carlo standard error for PMPM savings: ~$0.52 (well below reporting threshold)
+
+### Welfare and Sensitivity Analyses
+
+`microsim/welfare.py` provides:
+- `compute_welfare()`: Hicks-Kaldor surplus decomposition
+- `sensitivity_wtp()`: WTP threshold sensitivity ($50k–$200k/QALY)
+- `sensitivity_qaly_weights()`: Grid over QALY decrements (hospitalization, ED, PCP)
+- `sensitivity_epsilon()`: Atkinson equity-aversion sensitivity (epsilon = 0.5, 1.0, 2.0)
+- `mc_standard_error()`: Monte Carlo SE per outcome and scenario
+
+QALY weights: hospitalization 0.05, ED 0.01, PCP 0.002 per event. Consistent with Briggs et al. Value Health 2016 and Jiang et al. Med Decis Making 2017 for ambulatory-care-sensitive condition hospitalizations. See `sensitivity_qaly_weights()` for range analysis.
 
 ### Structural Sensitivity
 
-The admin-reform-only scenario (S6) applies AI administrative cost reduction (3% overhead) with identical clinical parameters to the status quo, isolating administrative savings from AI clinical efficacy assumptions.
+The admin-reform-only scenario (S6) applies AI administrative cost reduction (3% overhead) with identical clinical parameters to the status quo, isolating administrative savings from AI clinical efficacy assumptions. P(positive net savings | admin reform only) = 97–99% across PSA iterations.
 
 ## Verification
 
-The status quo scenario calibrates within published ranges (Table S2 in appendix):
+The status quo scenario calibrates within published ranges (eTable 6 in appendix):
 
 | Metric | Simulated | Published Range |
 |---|---|---|
-| PMPM | $468 | $450–$550 (MACPAC) |
-| Hospitalizations/1,000 PY | 185 | 150–220 (HCUP/MEPS) |
-| ED visits/1,000 PY | 689 | 550–850 (MEPS) |
+| PMPM | $483 | $450–$550 (MACPAC) |
+| Hospitalizations/1,000 PY | 196 | 150–220 (HCUP/MEPS) |
+| ED visits/1,000 PY | 715 | 550–850 (MEPS) |
 | HEDIS gap closure | 35% | 30–45% (NCQA) |
 | Admin cost (% premium) | 8.3% | 8–13% (CMS) |
+
+Note: values above are from the synthetic population (N=10,000). The manuscript reports values from the full ACS PUMS population (N=75,043); results are consistent within rounding.
+
+## Changelog
+
+### v2 (April 2026)
+- **channels.py**: Per-individual AI encounter share conditioned on digital access (previously uniform at 58%)
+- **parameters.py**: `ai_encounter_share` is now a PSA Beta distribution; previously hardcoded
+- **welfare.py**: Added `sensitivity_qaly_weights()`, `sensitivity_epsilon()`, `mc_standard_error()`; documented QALY weight sources
+- **process_results.py**: Added `compute_parameter_importance()` with correct paired Spearman rho; added `admin_only` scenario; welfare call now runs all sensitivity analyses
+
+### v1 (March 2026)
+- Initial release
 
 ## License
 

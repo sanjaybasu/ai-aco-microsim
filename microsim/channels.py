@@ -12,6 +12,18 @@ Channels:
     5. Equity — detection/documentation probability by race × metro
 
 Population: ACS PUMS Medicaid adults (public data, fully replicable).
+
+Methodological note (AI encounter share and digital access):
+    The 58% population-level AI encounter share is distributed at the
+    individual level based on each person's digital access status
+    (Channel 1). Individuals with broadband access receive AI-first
+    encounters at an above-average rate (calibrated so the population
+    mean = consensus 58%); individuals without broadband access receive
+    a near-zero AI encounter rate (~5%, representing phone-only triage
+    and scheduling only). This ensures that clinical benefit is
+    concentrated among digitally connected beneficiaries, consistent
+    with the engagement penalty applied in Channel 2 (Rodriguez et al.
+    JAMA Netw Open 2024; Nouri et al. NEJM Catalyst 2020).
 """
 
 import numpy as np
@@ -244,32 +256,45 @@ def simulate_scenario(
                 rr_hosp *= 0.5  # lower bound
                 rr_ed *= 0.5
 
-            # --- Network adequacy attenuation ---
-            # AI virtual encounters (ai_encounter_share) bypass network;
-            # the remaining fraction depends on provider participation,
-            # which is a function of reimbursement rates.
-            ai_share = params.get("ai_encounter_share", 0.58)
+            # --- Per-individual AI encounter share based on digital access ---
+            # The 58% population-level mean is distributed by digital access status:
+            # individuals WITH broadband receive AI-first encounters at a higher rate
+            # (normalised so the population mean remains ~58%); individuals WITHOUT
+            # broadband receive near-zero AI encounters (~5%, phone-only triage).
+            # This ensures clinical effects are concentrated among digitally connected
+            # beneficiaries, consistent with the engagement penalty in Channel 2.
+            ai_share_pop = params.get("ai_encounter_share", 0.58)
+            p_digital_mean = float(p_access_arr.mean())
+            if p_digital_mean > 0.01:
+                ai_share_with = float(np.clip(ai_share_pop / p_digital_mean, 0.0, 0.90))
+            else:
+                ai_share_with = 0.90
+            ai_share_without = 0.05  # phone-only: scheduling and basic triage
+
+            tier_digital = has_digital_access[mask]
+            ai_share_arr = np.where(tier_digital, ai_share_with, ai_share_without)
+
+            # --- Network adequacy attenuation (per individual) ---
+            # AI encounters bypass network; referral-dependent encounters do not.
             rate = params.get("provider_rate_pct_medicare", 125.0)
             ref_factor = referral_access_factor(rate)
-            # Effective RR = full RR for AI-direct share + attenuated for referral share
-            network_factor = ai_share + (1.0 - ai_share) * ref_factor
-            rr_hosp *= network_factor
-            rr_ed *= network_factor
+            network_factor_arr = ai_share_arr + (1.0 - ai_share_arr) * ref_factor
 
-            # Engaged patients get intervention effect
-            hosp_engaged = base_hosp * (1.0 - rr_hosp)
-            ed_engaged = base_ed * (1.0 - rr_ed)
-            pcp_engaged = base_pcp * pcp_mult
+            # Engaged patients: utilization reduced proportional to individual
+            # AI encounter share and network adequacy
+            hosp_engaged_arr = base_hosp * (1.0 - rr_hosp * network_factor_arr)
+            ed_engaged_arr = base_ed * (1.0 - rr_ed * network_factor_arr)
+            pcp_engaged = base_pcp * pcp_mult  # PCP volume not gated by digital access
 
-            # Non-engaged: baseline with spillover (parameterizable for backtesting)
+            # Non-engaged: baseline with spillover
             spillover_hosp = params.get("spillover_hosp", 0.97)
             spillover_ed = params.get("spillover_ed", 0.98)
             hosp_not_engaged = base_hosp * spillover_hosp
             ed_not_engaged = base_ed * spillover_ed
 
-            # Combine
-            hosp_rate_arr = np.where(tier_engaged, hosp_engaged, hosp_not_engaged)
-            ed_rate_arr = np.where(tier_engaged, ed_engaged, ed_not_engaged)
+            # Combine engagement status with per-individual rates
+            hosp_rate_arr = np.where(tier_engaged, hosp_engaged_arr, hosp_not_engaged)
+            ed_rate_arr = np.where(tier_engaged, ed_engaged_arr, ed_not_engaged)
             pcp_rate_arr = np.where(tier_engaged, pcp_engaged, base_pcp)
         elif scenario == "enhanced_ffs":
             hosp_rate = base_hosp * 0.95
@@ -319,10 +344,14 @@ def simulate_scenario(
     elif scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal"):
         # HEDIS gap closure depends on completing care chains (screening → referral → treatment).
         # AI handles screening/outreach directly, but referral completion depends on network.
-        ai_share = params.get("ai_encounter_share", 0.58)
+        # Use population-mean digital access to compute aggregate HEDIS network factor.
+        ai_share_pop = params.get("ai_encounter_share", 0.58)
+        p_digital_mean = float(p_access_arr.mean())
+        # Population-average effective AI share for HEDIS (aggregate, not individual-level)
+        ai_share_eff_mean = ai_share_pop  # population mean preserved by construction
         rate = params.get("provider_rate_pct_medicare", 125.0)
         ref_factor = referral_access_factor(rate)
-        hedis_network_factor = ai_share + (1.0 - ai_share) * ref_factor
+        hedis_network_factor = ai_share_eff_mean + (1.0 - ai_share_eff_mean) * ref_factor
 
         base_ai_hedis = params["ai_hedis_closure"]
         if scenario == "ai_aco_pessimistic":

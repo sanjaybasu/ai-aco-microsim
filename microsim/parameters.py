@@ -217,11 +217,22 @@ class AIACOPSAParameters:
         self.ai_admin_rate = stats.beta(3, 97)  # ~3% (of premium)
 
         # -----------------------------------------------------------
+        # AI encounter share (PSA distribution)
+        # -----------------------------------------------------------
+        # Fraction of total encounters handled by AI-first virtual care.
+        # Consensus design: 58% (eTable 4). Beta distribution parameterized
+        # to reflect debate uncertainty (pessimistic minority: 40%; optimistic: 72%).
+        # Population-level mean; individual-level share conditioned on digital
+        # access in channels.py Channel 3.
+        # Source: Multi-agent Delphi consensus (Round 2, CV = 0.12).
+        self.ai_encounter_share = stats.beta(a=30, b=22)  # mean ~0.577, SD ~0.058
+
+        # -----------------------------------------------------------
         # Provider reimbursement → network adequacy
         # -----------------------------------------------------------
         # Provider rate as % of Medicare RBRVS
         # Source: Consensus design = 125% PCP, 110% hospital
-        # Current Medicaid average ≈ 75% (MACPAC MACStats 2024)
+        # Current Medicaid average ~75% (MACPAC MACStats 2024)
         # Affects referral completion for the non-AI care pathway
         self.provider_rate_pct_medicare = 125.0  # default; overridable per scenario
 
@@ -333,5 +344,7 @@ class AIACOPSAParameters:
             },
             "ai_equity_gap_reduction": np.clip(self.ai_equity_gap_reduction.rvs(), 0.10, 0.50),
             "provider_rate_pct_medicare": self.provider_rate_pct_medicare,
-            "ai_encounter_share": 0.58,  # consensus: 58% of encounters handled by AI
+            # Draw AI encounter share from PSA distribution (mean ~0.58)
+            # Individual-level share is conditioned on digital access in channels.py
+            "ai_encounter_share": float(np.clip(self.ai_encounter_share.rvs(), 0.35, 0.80)),
         }

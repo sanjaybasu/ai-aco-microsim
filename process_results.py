@@ -104,7 +104,7 @@ def run_microsim(consensus: dict, n_iterations: int = 1000, output_dir: str = "o
         df,
         n_iterations=n_iterations,
         scenarios=["sq_mco", "ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic",
-                    "enhanced_ffs", "ai_aco_universal"],
+                    "enhanced_ffs", "ai_aco_universal", "admin_only"],
         seed=42,
     )
 
@@ -130,28 +130,94 @@ def run_microsim(consensus: dict, n_iterations: int = 1000, output_dir: str = "o
 
 
 def run_welfare(summary: pd.DataFrame, psa_results: pd.DataFrame, output_dir: str = "output"):
-    """Run welfare analysis."""
-    from microsim.welfare import compute_welfare, compute_equity_weighted_welfare, sensitivity_wtp
+    """Run welfare analysis including QALY and epsilon sensitivity."""
+    from microsim.welfare import (
+        compute_welfare, compute_equity_weighted_welfare,
+        sensitivity_wtp, sensitivity_qaly_weights, sensitivity_epsilon,
+        mc_standard_error,
+    )
 
     welfare = compute_welfare(summary)
     equity_welfare = compute_equity_weighted_welfare(psa_results, epsilon=1.0)
     wtp_sensitivity = sensitivity_wtp(summary)
+    qaly_sensitivity = sensitivity_qaly_weights(summary)
+    eps_sensitivity = sensitivity_epsilon(psa_results, epsilon_values=[0.5, 1.0, 2.0])
 
     outdir = Path(output_dir) / "welfare"
     outdir.mkdir(parents=True, exist_ok=True)
     welfare.to_csv(outdir / "welfare_analysis.csv", index=False)
     equity_welfare.to_csv(outdir / "equity_weighted_welfare.csv", index=False)
     wtp_sensitivity.to_csv(outdir / "wtp_sensitivity.csv", index=False)
+    qaly_sensitivity.to_csv(outdir / "qaly_sensitivity.csv", index=False)
+    eps_sensitivity.to_csv(outdir / "epsilon_sensitivity.csv", index=False)
 
     logger.info("=== WELFARE ANALYSIS ===")
     for _, row in welfare.iterrows():
         logger.info(
             f"  {row['scenario']}: PMPM savings=${row['pmpm_savings']:.1f}, "
             f"QALYs/1000={row['qaly_gain_per_1000']:.2f}, "
-            f"B-W gap Δ={row['bw_hosp_gap_reduction']:.1f}"
+            f"B-W gap change={row['bw_hosp_gap_reduction']:.1f}"
+        )
+
+    # Report MC standard errors (CHEERS 2022 item 20)
+    logger.info("=== MONTE CARLO STANDARD ERRORS ===")
+    for col in ["hosp_per_1000", "ed_per_1000", "pmpm"]:
+        se_info = mc_standard_error(psa_results, col, "ai_aco")
+        logger.info(
+            f"  ai_aco / {col}: mean={se_info['mean']:.3f}, SE={se_info['se_mc']:.4f} "
+            f"(N={se_info['n_iterations']} iterations)"
         )
 
     return welfare, equity_welfare
+
+
+def compute_parameter_importance(psa_results: pd.DataFrame, output_dir: str = "output") -> pd.DataFrame:
+    """
+    Compute Spearman rank correlations of input parameters with PMPM savings.
+
+    Key methodological note: the dominant parameter is the admin rate
+    difference (SQ admin rate - AI admin rate), computed as a paired
+    iteration-level quantity. This preserves the shared parameter draws
+    across scenarios and gives the correct conditional correlation.
+
+    Returns:
+        DataFrame with parameter name and Spearman rho vs PMPM savings.
+    """
+    from scipy.stats import spearmanr
+
+    sq = psa_results[psa_results["scenario"] == "sq_mco"].set_index("iteration")
+    ai = psa_results[psa_results["scenario"] == "ai_aco"].set_index("iteration")
+
+    pmpm_savings = (sq["pmpm"] - ai["pmpm"]).loc[ai.index]
+
+    param_rhos = []
+
+    # Admin rate difference (dominant parameter)
+    admin_diff = sq["admin_cost_pct"].loc[ai.index] - ai["admin_cost_pct"]
+    rho, pval = spearmanr(admin_diff, pmpm_savings)
+    param_rhos.append({"parameter": "admin_rate_difference", "rho": round(rho, 3), "pvalue": round(pval, 4)})
+
+    # Clinical outcome parameters (proxied by paired changes)
+    for col, label in [
+        ("hosp_per_1000", "hosp_rr_reduction"),
+        ("ed_per_1000", "ed_rr_reduction"),
+        ("engagement_rate", "engagement_gain"),
+        ("hedis_gap_closure", "hedis_improvement"),
+    ]:
+        diff = sq[col].loc[ai.index] - ai[col]
+        rho, pval = spearmanr(diff, pmpm_savings)
+        param_rhos.append({"parameter": label, "rho": round(rho, 3), "pvalue": round(pval, 4)})
+
+    df = pd.DataFrame(param_rhos).sort_values("rho", key=abs, ascending=False)
+
+    outdir = Path(output_dir) / "microsim"
+    outdir.mkdir(parents=True, exist_ok=True)
+    df.to_csv(outdir / "parameter_importance.csv", index=False)
+    logger.info("=== PARAMETER IMPORTANCE (Spearman rho vs PMPM savings) ===")
+    for _, row in df.iterrows():
+        logger.info(f"  {row['parameter']}: rho={row['rho']:.3f}")
+
+    return df
 
 
 def run_visualization(summary, welfare, psa_results, convergence_history, output_dir="output"):
@@ -199,10 +265,13 @@ def main():
     # Step 2: Microsimulation
     psa_results, summary = run_microsim(consensus, args.n_iterations, args.output_dir)
 
-    # Step 3: Welfare
+    # Step 3: Welfare (includes QALY and epsilon sensitivity)
     welfare, equity_welfare = run_welfare(summary, psa_results, args.output_dir)
 
-    # Step 4: Visualization
+    # Step 4: Parameter importance (Spearman rho, CHEERS 2022 item 20)
+    compute_parameter_importance(psa_results, args.output_dir)
+
+    # Step 5: Visualization
     try:
         run_visualization(summary, welfare, psa_results, convergence_history, args.output_dir)
     except ImportError as e:
