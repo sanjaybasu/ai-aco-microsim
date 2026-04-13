@@ -12,6 +12,22 @@ Government surplus is decomposed into:
   - Medical savings (utilization reduction)
   - Administrative savings (overhead reduction)
 These are NOT additive — both are components of total PMPM savings.
+
+QALY weight sources and rationale:
+  - Hospitalization (0.05 per event): Based on condition-weighted average
+    QALY decrement for a 3-4 day hospitalization episode in a Medicaid
+    population. Consistent with ranges in Briggs et al. (Value Health 2016)
+    for ambulatory care-sensitive condition hospitalizations (range 0.02-0.12
+    depending on condition mix and duration).
+  - ED visit (0.01 per event): Per-visit disutility for ED encounters not
+    resulting in hospitalization. Consistent with Jiang et al. (Med Decis
+    Making 2017) estimates for acute care visits.
+  - PCP visit (0.002 per event): Marginal preventive care value per additional
+    visit. Represents QALY value of completed preventive care processes
+    (screening, medication reconciliation) rather than the visit itself.
+  These values are within published ranges but are not derived from a single
+  validated source; results should be interpreted alongside utilization and
+  cost findings. QALY sensitivity analysis available via sensitivity_qaly_weights().
 """
 
 import numpy as np
@@ -22,10 +38,13 @@ from typing import Dict, List, Optional
 # WTP threshold for QALYs (standard US, 2024 USD)
 WTP_PER_QALY = 100_000
 
-# QALY decrements per acute care event (RECODe-derived)
-QALY_DECREMENT_HOSP = 0.05   # per hospitalization
-QALY_DECREMENT_ED = 0.01     # per ED visit
-QALY_GAIN_PCP = 0.002        # per additional PCP visit (preventive value)
+# QALY decrements per acute care event
+# Sources: Briggs et al. Value Health 2016; Jiang et al. Med Decis Making 2017
+# Note: condition-weighted estimates for Medicaid adult population mix
+# See sensitivity_qaly_weights() for range analysis
+QALY_DECREMENT_HOSP = 0.05   # per hospitalization (range tested: 0.02-0.10)
+QALY_DECREMENT_ED = 0.01     # per ED visit (range tested: 0.005-0.02)
+QALY_GAIN_PCP = 0.002        # per additional PCP visit (range tested: 0.001-0.005)
 
 
 def compute_welfare(
@@ -187,3 +206,124 @@ def sensitivity_wtp(
         results.append(welfare)
 
     return pd.concat(results, ignore_index=True)
+
+
+def sensitivity_qaly_weights(
+    psa_summary: pd.DataFrame,
+    hosp_values: Optional[List[float]] = None,
+    ed_values: Optional[List[float]] = None,
+    pcp_values: Optional[List[float]] = None,
+) -> pd.DataFrame:
+    """
+    Run welfare analysis across a grid of QALY weight assumptions.
+
+    Tests robustness of consumer surplus and net surplus estimates to
+    variation in per-event QALY decrements. Each combination is run
+    at the base-case WTP of $100,000/QALY.
+
+    Args:
+        psa_summary: Output of summarize_psa().
+        hosp_values: QALY decrement per hospitalization (default: 0.02, 0.05, 0.10).
+        ed_values: QALY decrement per ED visit (default: 0.005, 0.01, 0.02).
+        pcp_values: QALY gain per PCP visit (default: 0.001, 0.002, 0.005).
+
+    Returns:
+        DataFrame with columns: hosp_qaly, ed_qaly, pcp_qaly, scenario,
+        consumer_surplus_per_member, net_surplus_per_member.
+    """
+    if hosp_values is None:
+        hosp_values = [0.02, 0.05, 0.10]
+    if ed_values is None:
+        ed_values = [0.005, 0.01, 0.02]
+    if pcp_values is None:
+        pcp_values = [0.001, 0.002, 0.005]
+
+    results = []
+    for h in hosp_values:
+        for e in ed_values:
+            for p in pcp_values:
+                baseline = psa_summary[psa_summary["scenario"] == "sq_mco"].iloc[0]
+                for _, row in psa_summary.iterrows():
+                    scenario = row["scenario"]
+                    delta_hosp = baseline["hosp_per_1000_mean"] - row["hosp_per_1000_mean"]
+                    delta_ed = baseline["ed_per_1000_mean"] - row["ed_per_1000_mean"]
+                    delta_pcp = row["pcp_per_1000_mean"] - baseline["pcp_per_1000_mean"]
+                    hedis_delta = row["hedis_gap_closure_mean"] - baseline["hedis_gap_closure_mean"]
+                    qaly_gain = (
+                        delta_hosp * h
+                        + delta_ed * e
+                        + max(delta_pcp, 0) * p
+                        + hedis_delta * 1000 * 0.001
+                    )
+                    cs = qaly_gain / 1000 * WTP_PER_QALY
+                    pmpm_savings = baseline["pmpm_mean"] - row["pmpm_mean"]
+                    net = cs + pmpm_savings * 12
+                    results.append({
+                        "hosp_qaly": h,
+                        "ed_qaly": e,
+                        "pcp_qaly": p,
+                        "scenario": scenario,
+                        "consumer_surplus_per_member": round(cs, 2),
+                        "net_surplus_per_member": round(net, 2),
+                    })
+
+    return pd.DataFrame(results)
+
+
+def sensitivity_epsilon(
+    psa_results: pd.DataFrame,
+    epsilon_values: Optional[List[float]] = None,
+) -> pd.DataFrame:
+    """
+    Run equity-weighted welfare across Atkinson inequality-aversion values.
+
+    Args:
+        psa_results: Full PSA iteration results from run_psa().
+        epsilon_values: Aversion parameters (default: 0.5, 1.0, 2.0).
+
+    Returns:
+        DataFrame with columns: epsilon, scenario, equally_distributed_equivalent,
+        atkinson_index, mean_health.
+    """
+    if epsilon_values is None:
+        epsilon_values = [0.5, 1.0, 2.0]
+
+    results = []
+    for eps in epsilon_values:
+        ew = compute_equity_weighted_welfare(psa_results, epsilon=eps)
+        results.append(ew)
+
+    return pd.concat(results, ignore_index=True)
+
+
+def mc_standard_error(psa_results: pd.DataFrame, outcome_col: str, scenario: str) -> Dict[str, float]:
+    """
+    Compute Monte Carlo standard error for a PSA outcome.
+
+    For 1,000 iterations, the MC standard error is SD / sqrt(N).
+    Per CHEERS 2022 item 20, this should be reported alongside
+    uncertainty intervals.
+
+    Args:
+        psa_results: Full PSA iteration results.
+        outcome_col: Column name for the outcome of interest.
+        scenario: Scenario name.
+
+    Returns:
+        Dict with keys: mean, sd, se_mc, n, ci_95_lower, ci_95_upper.
+    """
+    sdf = psa_results[psa_results["scenario"] == scenario][outcome_col].dropna()
+    n = len(sdf)
+    mean = float(sdf.mean())
+    sd = float(sdf.std())
+    se = sd / np.sqrt(n) if n > 0 else 0.0
+    return {
+        "scenario": scenario,
+        "outcome": outcome_col,
+        "n_iterations": n,
+        "mean": round(mean, 4),
+        "sd": round(sd, 4),
+        "se_mc": round(se, 4),
+        "ci_95_lower": round(float(sdf.quantile(0.025)), 4),
+        "ci_95_upper": round(float(sdf.quantile(0.975)), 4),
+    }
