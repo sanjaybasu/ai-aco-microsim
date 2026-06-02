@@ -95,19 +95,17 @@ ai-aco-microsim/
 │   ├── population.py          # ACS PUMS population loader
 │   └── welfare.py             # Hicks-Kaldor welfare + Atkinson equity
 │
-├── visualization/             # Manuscript figures
-│   └── exhibits.py            # 4 NEJM AI figures (convergence, radar, equity, welfare)
+├── visualization/             # Figure-generation code
+│   └── exhibits.py            # Generates 4 manuscript figures (convergence, radar, equity, welfare)
 │
-├── output/                    # Generated results (not tracked in git)
-│   ├── debate/                # Debate round JSONs + consensus
-│   ├── microsim/              # PSA results (parquet + CSV)
-│   ├── welfare/               # Welfare analysis CSVs
-│   └── figures/               # PDF + PNG figures
-│
-├── manuscript.md              # NEJM AI submission text
-├── appendix.md                # Supplementary appendix
-└── cover_letter.md            # Submission cover letter
+└── output/                    # Generated at runtime by the pipeline; not included in this repository
+    ├── debate/                # Debate round JSONs + consensus
+    ├── microsim/              # PSA results (parquet + CSV)
+    ├── welfare/               # Welfare analysis CSVs
+    └── figures/               # PDF + PNG figures
 ```
+
+This repository contains **only the reproducibility code**. The manuscript, appendix, figures, and result tables are not included here; running the pipeline regenerates all outputs into `output/`.
 
 ## Key Design Decisions
 
