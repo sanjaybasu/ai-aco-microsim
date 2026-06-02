@@ -1,52 +1,27 @@
-# Cover Letter
+June 2, 2026
+
+The Editors
+BMC Health Services Research
 
 Dear Editors,
 
-We submit for your consideration our manuscript, "Would an AI-First Accountable Care Organization Improve Patient Outcomes in Medicaid? A Multi-Agent AI Debate and Validated Microsimulation Study."
+We are pleased to submit our manuscript, "Under what conditions could an AI-first accountable care organization improve outcomes in Medicaid? A microsimulation and economic evaluation," for consideration as a Research Article in *BMC Health Services Research*.
 
-## Why This Manuscript Matters Now
+Medicaid managed care organizations enroll most of the program's 48.3 million beneficiaries, yet evidence on their effect on outcomes is mixed and their administrative overhead is substantial. State and federal agencies are now actively examining whether artificial intelligence (AI) could enable accountable care–style coordination at lower administrative cost. Our study addresses this question through a health services and health-economic lens: we combine a structured multi-agent AI design process with a Monte Carlo microsimulation and economic evaluation to identify the conditions under which an AI-first Medicaid accountable care organization could improve outcomes—and the conditions under which it could worsen them. The work follows the CHEERS-AI reporting standard, characterizes parameter uncertainty through a 1,000-iteration probabilistic sensitivity analysis, and externally validates the model against five independent natural experiments, with all 15 observed effect estimates falling within the simulated 95% uncertainty intervals.
 
-Medicaid managed care — serving over 70% of the program's 90+ million beneficiaries — has not delivered on its promise. Causal evidence shows mandatory managed care increased spending without improving outcomes, random plan assignment reveals no quality differentiation among competing MCOs, and network adequacy remains a persistent fiction. Simultaneously, AI clinical systems are advancing rapidly, with prospective studies now demonstrating diagnostic accuracy comparable to physicians — yet no rigorous framework exists for evaluating whether AI could improve the organizational delivery of care, not just individual clinical decisions.
+Because no AI-first Medicaid accountable care organization yet exists, empirical evaluation is premature. We therefore take a preclinical, design-and-evaluate approach: we specify an organizational design under explicit clinical, regulatory, financial, and ethical constraints, then evaluate its projected outcomes against calibrated national benchmarks with out-of-sample validation against five independent natural experiments.
 
-## What Is Novel
+We wish to address directly the most natural concern about a study of this design—that an assumed administrative efficiency mechanically produces the projected savings. We have structured the manuscript to confront this rather than obscure it. The dominant driver of projected benefit is administrative overhead reduction, not AI clinical performance; and we decompose that reduction to show that most of it is *structural rather than AI-dependent*—the marketing, broker, and profit margin that a nonprofit, charter-locked public-benefit entity does not incur (a difference of roughly four percentage points of premium in recently published, peer-reviewed regulatory-filing data). The smaller AI-automatable component is bounded by published administrative-transaction benchmarks, and a sensitivity analysis shows the directional conclusion of net savings holds across administrative rates well below the status-quo level, without requiring the most aggressive target. We state explicitly, in both the Results and the Limitations, that this administrative reduction is a modeled assumption rather than an externally validated result, and that the natural-experiment validation covers only the second-order clinical and utilization cascade. Accordingly, we present the results as a design envelope and a measurable, prospectively testable administrative-cost threshold—the primary measure we propose for a Section 1115 demonstration—rather than as a deployment recommendation. We also identify digital access inequity as the primary condition under which such a model could worsen disparities.
 
-This study makes three contributions:
+In the interest of full transparency, both authors hold financial interests in Waymark, an organization engaged in Medicaid care delivery. These interests are detailed in our competing-interests declaration and are discussed explicitly in the Limitations as a potential source of motivated reasoning. To mitigate this, the analytic code and the study population are publicly available, the model is externally validated against independent reforms not designed by the authors, and we identify independent prospective evaluation as the necessary next step. The study received no funding.
 
-1. **Methodological innovation**: We adapt multi-agent AI debate — previously applied only to mathematical and scientific reasoning — to healthcare system design, producing the first AI-designed organizational model with specific, quantitative parameters for clinical delivery, payment, governance, and regulation. The Modified Delphi process with 8 expert AI agents across 12 parameter domains represents a new approach to structured design under uncertainty.
-
-2. **Structural sensitivity that inverts the usual AI critique**: Two-thirds of projected savings ($27 of $41 PMPM) derive from administrative automation alone, with zero assumptions about AI clinical efficacy (P = 98.8% for positive savings). This reframes the question from "Can AI practice medicine?" to "Can AI reduce the 8–13% administrative overhead that demonstrably adds no patient value?" — a far more tractable and evidence-based proposition.
-
-3. **Comprehensive validation**: The microsimulation engine was validated through backtesting against 5 independent natural experiments spanning global budgets, shared savings, community engagement, and primary care transformation — achieving 100% coverage (15/15 comparisons) with a mean calibration ratio of 0.99, including a negative control (CPC+). A provider rate sensitivity analysis incorporating network adequacy effects showed 91% of clinical benefit retained even at current Medicaid reimbursement levels, and an encounter share sensitivity analysis demonstrated robustness from 20% to 75% AI-handled encounters.
-
-## Strengths
-
-- **Equity-first design**: Race × metropolitan status stratification shows improvements in all 8 subgroups, with no widening of geographic disparities despite the virtual-first model
-- **Transparent parameter sourcing**: Every parameter distribution is publicly sourced, with the Parameter Importance Table showing the two dominant drivers (administrative cost rates, baseline utilization) are both empirically observed — not projected
-- **Proactive limitation acknowledgment**: We explicitly model and report the digital divide constraint, the modest equity improvements (B-W gap narrows only 8%), and the steady-state modeling limitation
-- **Actionable policy pathway**: The Section 1115 waiver framework provides a concrete, legally grounded implementation path with existing precedents
-
-## Suggested Reviewers
-
-We suggest the following reviewers who have expertise at the intersection of AI in healthcare, Medicaid policy, and health economic evaluation:
-
-1. **Eric Topol, M.D.** — Scripps Research Translational Institute, La Jolla, CA. Author of *Deep Medicine* and leading advocate for AI in clinical care. Has published extensively on how AI can augment physician decision-making and improve diagnostic accuracy, directly relevant to our AI-first clinical delivery model and multi-model ensemble architecture. Email: etopol@scripps.edu
-
-2. **James Zou, Ph.D.** — Stanford University, Department of Biomedical Data Science. Founder of the Agents4Science conference on multi-agent AI systems for scientific reasoning (Nature Biotechnology 2026). Pioneer in applying multi-agent AI frameworks to complex scientific problems, directly relevant to our adaptation of multi-agent debate methodology from scientific reasoning to healthcare system design. Email: jamesz@stanford.edu
-
-3. **Suchi Saria, Ph.D.** — Johns Hopkins University / Bayesian Health. Pioneer in AI early warning systems for clinical deterioration (TREWS, Nature Medicine 2022, cited in our appendix). Expertise in deploying AI clinical decision support in real-world health systems, directly relevant to our multi-model ensemble safety architecture and clinical utilization modeling. Email: ssaria@jhu.edu
-
-4. **Emily R. Carrier, M.D.** — Manatt Health; formerly Division Director, Seamless Care Models Group, Center for Medicare and Medicaid Innovation (CMMI). Published on how AI challenges the RBRVS framework for nonprocedural physician payment (Health Affairs Forefront 2026). Combines deep CMS payment policy expertise with clinical background in emergency medicine, directly relevant to our analysis of capitated AI delivery as an alternative to fee-for-service. Email: ecarrier@manatt.com
-
-5. **Ziad Obermeyer, M.D.** — University of California Berkeley School of Public Health. Pioneer in algorithmic bias in healthcare (Science 2019); our equity framework directly builds on his work on differential condition detection by race. Expertise in health economics and AI fairness. Email: zobermeyer@berkeley.edu
-
-We have no conflicts of interest with any suggested reviewer.
+This manuscript is original, is not under consideration elsewhere, and has been approved by both authors. We have no competing or concurrent submission at *BMC Health Services Research*. We believe the study will interest the journal's readership in Medicaid policy, value-based care, and the economic evaluation of AI-enabled health services.
 
 Thank you for your consideration.
 
 Sincerely,
 
-Sanjay Basu, M.D., Ph.D.
-Waymark and University of California San Francisco
-
-Rajaie Batniji, M.D., Ph.D.
-Waymark
+Sanjay Basu, MD, PhD (corresponding author)
+On behalf of Rajaie Batniji, MD, PhD
+University of California, San Francisco
+sanjay.basu@ucsf.edu
