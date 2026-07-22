@@ -211,7 +211,12 @@ class AIACOPSAParameters:
         # Administrative costs
         # -----------------------------------------------------------
         # Status quo MCO admin rate
-        self.sq_admin_rate = stats.beta(8, 92)  # ~8% (of premium)
+        # Status quo MCO admin rate. Re-anchored (revision 1) to the Milliman 2025
+        # Medicaid-focused MCO composite administrative loss ratio NET OF TAXES AND
+        # FEES = 7.7% of premium (CY2024). Taxes and fees are pass-through and are
+        # excluded from both arms, so the AI ACO 3.0% target is likewise net of
+        # taxes and fees (apples-to-apples).
+        self.sq_admin_rate = stats.beta(7.7, 92.3)  # ~7.7% (of premium, net of taxes/fees)
 
         # AI ACO admin rate (major innovation claim)
         self.ai_admin_rate = stats.beta(3, 97)  # ~3% (of premium)
@@ -312,7 +317,7 @@ class AIACOPSAParameters:
         ai_hedis = np.clip(self.ai_hedis_gap_closure.rvs(), 0.30, 0.70)
 
         # Admin
-        sq_admin = np.clip(self.sq_admin_rate.rvs(), 0.06, 0.17)
+        sq_admin = np.clip(self.sq_admin_rate.rvs(), 0.045, 0.13)
         ai_admin = np.clip(self.ai_admin_rate.rvs(), 0.01, 0.06)
 
         # Detection/certification (equity channel)
