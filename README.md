@@ -182,3 +182,20 @@ Note: values above are from the synthetic population (N=10,000). The manuscript 
 ## License
 
 This code is provided for scientific reproducibility. Please cite the manuscript if you use or adapt this code.
+
+## Revision 1 (BMC Health Services Research)
+
+The status-quo administrative baseline was re-anchored from 8.4% to the Milliman 2025
+Medicaid-focused composite administrative loss ratio net of taxes and fees (7.7% of
+premium); see `microsim/parameters.py`. Revision analyses are driven by a single
+reproducible pipeline at a fixed seed so all reported tables are mutually consistent:
+
+- `run_revision1.py` — runs the main PSA, welfare, discount/administrative/provider-rate/
+  encounter-share sweeps, digital-divide stratification, parameter importance, and four
+  new analyses (program-investment accounting, AI deployment cost, state/plan
+  administrative-baseline variation, and community-health-worker staffing sensitivity),
+  writing one canonical results JSON.
+- `build_tables_r1.py` — renders manuscript/appendix table markdown from the canonical JSON.
+- `regenerate_figures_r1.py` — regenerates Figures 2–3 and eFigures 1–4 from the canonical JSON.
+
+No data, results, figures, or manuscript files are stored in this repository.
