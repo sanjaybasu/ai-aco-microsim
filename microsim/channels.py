@@ -12,18 +12,6 @@ Channels:
     5. Equity — detection/documentation probability by race × metro
 
 Population: ACS PUMS Medicaid adults (public data, fully replicable).
-
-Methodological note (AI encounter share and digital access):
-    The 58% population-level AI encounter share is distributed at the
-    individual level based on each person's digital access status
-    (Channel 1). Individuals with broadband access receive AI-first
-    encounters at an above-average rate (calibrated so the population
-    mean = consensus 58%); individuals without broadband access receive
-    a near-zero AI encounter rate (~5%, representing phone-only triage
-    and scheduling only). This ensures that clinical benefit is
-    concentrated among digitally connected beneficiaries, consistent
-    with the engagement penalty applied in Channel 2 (Rodriguez et al.
-    JAMA Netw Open 2024; Nouri et al. NEJM Catalyst 2020).
 """
 
 import numpy as np
@@ -256,45 +244,32 @@ def simulate_scenario(
                 rr_hosp *= 0.5  # lower bound
                 rr_ed *= 0.5
 
-            # --- Per-individual AI encounter share based on digital access ---
-            # The 58% population-level mean is distributed by digital access status:
-            # individuals WITH broadband receive AI-first encounters at a higher rate
-            # (normalised so the population mean remains ~58%); individuals WITHOUT
-            # broadband receive near-zero AI encounters (~5%, phone-only triage).
-            # This ensures clinical effects are concentrated among digitally connected
-            # beneficiaries, consistent with the engagement penalty in Channel 2.
-            ai_share_pop = params.get("ai_encounter_share", 0.58)
-            p_digital_mean = float(p_access_arr.mean())
-            if p_digital_mean > 0.01:
-                ai_share_with = float(np.clip(ai_share_pop / p_digital_mean, 0.0, 0.90))
-            else:
-                ai_share_with = 0.90
-            ai_share_without = 0.05  # phone-only: scheduling and basic triage
-
-            tier_digital = has_digital_access[mask]
-            ai_share_arr = np.where(tier_digital, ai_share_with, ai_share_without)
-
-            # --- Network adequacy attenuation (per individual) ---
-            # AI encounters bypass network; referral-dependent encounters do not.
+            # --- Network adequacy attenuation ---
+            # AI virtual encounters (ai_encounter_share) bypass network;
+            # the remaining fraction depends on provider participation,
+            # which is a function of reimbursement rates.
+            ai_share = params.get("ai_encounter_share", 0.58)
             rate = params.get("provider_rate_pct_medicare", 125.0)
             ref_factor = referral_access_factor(rate)
-            network_factor_arr = ai_share_arr + (1.0 - ai_share_arr) * ref_factor
+            # Effective RR = full RR for AI-direct share + attenuated for referral share
+            network_factor = ai_share + (1.0 - ai_share) * ref_factor
+            rr_hosp *= network_factor
+            rr_ed *= network_factor
 
-            # Engaged patients: utilization reduced proportional to individual
-            # AI encounter share and network adequacy
-            hosp_engaged_arr = base_hosp * (1.0 - rr_hosp * network_factor_arr)
-            ed_engaged_arr = base_ed * (1.0 - rr_ed * network_factor_arr)
-            pcp_engaged = base_pcp * pcp_mult  # PCP volume not gated by digital access
+            # Engaged patients get intervention effect
+            hosp_engaged = base_hosp * (1.0 - rr_hosp)
+            ed_engaged = base_ed * (1.0 - rr_ed)
+            pcp_engaged = base_pcp * pcp_mult
 
-            # Non-engaged: baseline with spillover
+            # Non-engaged: baseline with spillover (parameterizable for backtesting)
             spillover_hosp = params.get("spillover_hosp", 0.97)
             spillover_ed = params.get("spillover_ed", 0.98)
             hosp_not_engaged = base_hosp * spillover_hosp
             ed_not_engaged = base_ed * spillover_ed
 
-            # Combine engagement status with per-individual rates
-            hosp_rate_arr = np.where(tier_engaged, hosp_engaged_arr, hosp_not_engaged)
-            ed_rate_arr = np.where(tier_engaged, ed_engaged_arr, ed_not_engaged)
+            # Combine
+            hosp_rate_arr = np.where(tier_engaged, hosp_engaged, hosp_not_engaged)
+            ed_rate_arr = np.where(tier_engaged, ed_engaged, ed_not_engaged)
             pcp_rate_arr = np.where(tier_engaged, pcp_engaged, base_pcp)
         elif scenario == "enhanced_ffs":
             hosp_rate = base_hosp * 0.95
@@ -312,10 +287,21 @@ def simulate_scenario(
             pcp_events[mask] = rng.poisson(np.clip(pcp_rate, 0, 15), n_tier)
 
     # Costs
+    # Provider payment rates: when price_provider_rates is set, the AI ACO
+    # scenarios pay primary care at provider_rate_pct_medicare and hospital/ED
+    # services at ai_hosp_rate_pct, relative to status-quo Medicaid price levels
+    # (sq_pcp_rate_pct, sq_hosp_rate_pct, all as % of Medicare). Unit costs in
+    # params["costs"] are status-quo Medicaid prices. Off by default, which keeps
+    # earlier pipelines unchanged.
+    pcp_mult = hosp_mult = 1.0
+    if params.get("price_provider_rates") and scenario in (
+            "ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal"):
+        pcp_mult = params.get("provider_rate_pct_medicare", 125.0) / params["sq_pcp_rate_pct"]
+        hosp_mult = params["ai_hosp_rate_pct"] / params["sq_hosp_rate_pct"]
     total_medical_cost = (
-        hosp_events * params["costs"]["hosp"]
-        + ed_events * params["costs"]["ed"]
-        + pcp_events * params["costs"]["pcp"]
+        hosp_events * params["costs"]["hosp"] * hosp_mult
+        + ed_events * params["costs"]["ed"] * hosp_mult
+        + pcp_events * params["costs"]["pcp"] * pcp_mult
         + params["costs"]["pharmacy_pmpm"] * 12  # annual
     )
 
@@ -333,7 +319,7 @@ def simulate_scenario(
     elif scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal", "admin_only"):
         admin_rate = params["ai_admin_rate"]
     elif scenario == "enhanced_ffs":
-        admin_rate = params["sq_admin_rate"] * 0.7  # some improvement
+        admin_rate = params["sq_admin_rate"] * params.get("s4_admin_factor", 0.7)  # 0.7 = legacy "some improvement"
     total_cost = total_medical_cost / (1.0 - admin_rate)
 
     # ===================================================================
@@ -344,14 +330,10 @@ def simulate_scenario(
     elif scenario in ("ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic", "ai_aco_universal"):
         # HEDIS gap closure depends on completing care chains (screening → referral → treatment).
         # AI handles screening/outreach directly, but referral completion depends on network.
-        # Use population-mean digital access to compute aggregate HEDIS network factor.
-        ai_share_pop = params.get("ai_encounter_share", 0.58)
-        p_digital_mean = float(p_access_arr.mean())
-        # Population-average effective AI share for HEDIS (aggregate, not individual-level)
-        ai_share_eff_mean = ai_share_pop  # population mean preserved by construction
+        ai_share = params.get("ai_encounter_share", 0.58)
         rate = params.get("provider_rate_pct_medicare", 125.0)
         ref_factor = referral_access_factor(rate)
-        hedis_network_factor = ai_share_eff_mean + (1.0 - ai_share_eff_mean) * ref_factor
+        hedis_network_factor = ai_share + (1.0 - ai_share) * ref_factor
 
         base_ai_hedis = params["ai_hedis_closure"]
         if scenario == "ai_aco_pessimistic":
@@ -414,6 +396,12 @@ def simulate_scenario(
 
     # PMPM (weighted average)
     pmpm = float(np.sum(total_cost * w / 12))
+    # Payment above status-quo Medicaid prices (zero unless provider rates are priced),
+    # loaded with administration like all medical cost; a transfer to providers.
+    uplift_annual = (hosp_events * params["costs"]["hosp"] * (hosp_mult - 1)
+                     + ed_events * params["costs"]["ed"] * (hosp_mult - 1)
+                     + pcp_events * params["costs"]["pcp"] * (pcp_mult - 1)) / (1.0 - admin_rate)
+    provider_uplift_pmpm = float(np.sum(uplift_annual * w / 12))
 
     # Engagement rate
     engagement_rate = float(np.sum(engaged.astype(float) * w))
@@ -479,6 +467,7 @@ def simulate_scenario(
         "ed_per_1000": ed_per_1000,
         "pcp_per_1000": pcp_per_1000,
         "pmpm": pmpm,
+        "provider_uplift_pmpm": provider_uplift_pmpm,
         "engagement_rate": engagement_rate,
         "hedis_gap_closure": hedis_score,
         "hedis_racial_gap": hedis_racial_gap,

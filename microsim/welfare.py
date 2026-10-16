@@ -51,6 +51,7 @@ def compute_welfare(
     psa_summary: pd.DataFrame,
     baseline_scenario: str = "sq_mco",
     wtp_per_qaly: float = WTP_PER_QALY,
+    transfer_value: float = 1.0,
 ) -> pd.DataFrame:
     """
     Compute welfare surplus for each scenario relative to baseline.
@@ -58,6 +59,14 @@ def compute_welfare(
     Government surplus = total PMPM savings × 12. This already includes
     both medical savings (utilization) and administrative savings.
     We decompose but do NOT double-count.
+
+    When the summary carries program-investment columns (``pmpm_claims_mean``,
+    ``program_investment_pmpm_mean``, ``social_transfer_pmpm_mean``), "pmpm" is
+    total payer cost including the program investment, so government surplus is
+    net of that investment. The social-services budget is a transfer to members;
+    ``transfer_value`` is the value members place on each transferred dollar
+    (1.0 = face value, the standard cost-benefit treatment of a transfer; 0.0 =
+    conservative bound that treats the transfer as pure cost).
     """
     baseline = psa_summary[psa_summary["scenario"] == baseline_scenario].iloc[0]
 
@@ -82,8 +91,14 @@ def compute_welfare(
 
         consumer_surplus_per_member = qaly_gain_per_1000 / 1000 * wtp_per_qaly
 
+        # Social-services transfer received by members (zero if not modeled)
+        transfer_annual = 12 * (row.get("social_transfer_pmpm_mean", 0.0)
+                                - baseline.get("social_transfer_pmpm_mean", 0.0))
+        consumer_transfer_per_member = transfer_value * transfer_annual
+
         # ----- Government Surplus (total Medicaid program savings) -----
-        # This is the TOTAL savings — includes both medical and admin components
+        # This is the TOTAL savings — includes both medical and admin components,
+        # net of program investment when it is modeled
         pmpm_savings = baseline["pmpm_mean"] - row["pmpm_mean"]
         govt_surplus_per_member_annual = pmpm_savings * 12
 
@@ -91,18 +106,26 @@ def compute_welfare(
         admin_delta = baseline["admin_cost_pct_mean"] - row["admin_cost_pct_mean"]
         # Admin savings component: how much of the PMPM reduction is from admin
         admin_savings_per_member_annual = admin_delta * baseline["pmpm_mean"] * 12
-        # Medical savings component: remainder
-        medical_savings_per_member_annual = govt_surplus_per_member_annual - admin_savings_per_member_annual
+        investment_annual = 12 * (row.get("program_investment_pmpm_mean", 0.0)
+                                  - baseline.get("program_investment_pmpm_mean", 0.0))
+        # Medical savings component: remainder of gross (pre-investment) savings
+        medical_savings_per_member_annual = (govt_surplus_per_member_annual + investment_annual
+                                             - admin_savings_per_member_annual)
 
         # ----- Producer Surplus (provider net income change) -----
         avg_pcp_margin = 40  # USD per visit
         producer_surplus_per_member = delta_pcp / 1000 * avg_pcp_margin
+        # Payment above status-quo prices is a transfer from the payer to providers
+        producer_transfer_per_member = transfer_value * 12 * (
+            row.get("provider_uplift_pmpm_mean", 0.0) - baseline.get("provider_uplift_pmpm_mean", 0.0))
 
         # ----- Net Social Surplus per member per year -----
         net_surplus_per_member = (
             consumer_surplus_per_member
+            + consumer_transfer_per_member
             + govt_surplus_per_member_annual
             + producer_surplus_per_member
+            + producer_transfer_per_member
         )
 
         # ----- Equity metrics -----
@@ -112,10 +135,13 @@ def compute_welfare(
         welfare_rows.append({
             "scenario": scenario,
             "consumer_surplus_per_member": consumer_surplus_per_member,
+            "consumer_transfer_per_member": consumer_transfer_per_member,
+            "program_investment_per_member_annual": investment_annual,
             "govt_surplus_per_member_annual": govt_surplus_per_member_annual,
             "medical_savings_per_member_annual": medical_savings_per_member_annual,
             "admin_savings_per_member_annual": admin_savings_per_member_annual,
             "producer_surplus_per_member": producer_surplus_per_member,
+            "producer_transfer_per_member": producer_transfer_per_member,
             "net_surplus_per_member": net_surplus_per_member,
             "qaly_gain_per_1000": qaly_gain_per_1000,
             "pmpm_savings": pmpm_savings,
@@ -194,6 +220,7 @@ def compute_equity_weighted_welfare(
 def sensitivity_wtp(
     psa_summary: pd.DataFrame,
     wtp_values: Optional[List[float]] = None,
+    transfer_value: float = 1.0,
 ) -> pd.DataFrame:
     """Run welfare analysis across multiple WTP thresholds."""
     if wtp_values is None:
@@ -201,12 +228,11 @@ def sensitivity_wtp(
 
     results = []
     for wtp in wtp_values:
-        welfare = compute_welfare(psa_summary, wtp_per_qaly=wtp)
+        welfare = compute_welfare(psa_summary, wtp_per_qaly=wtp, transfer_value=transfer_value)
         welfare["wtp_threshold"] = wtp
         results.append(welfare)
 
     return pd.concat(results, ignore_index=True)
-
 
 def sensitivity_qaly_weights(
     psa_summary: pd.DataFrame,

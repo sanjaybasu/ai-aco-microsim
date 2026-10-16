@@ -199,3 +199,23 @@ reproducible pipeline at a fixed seed so all reported tables are mutually consis
 - `regenerate_figures_r1.py` — regenerates Figures 2–3 and eFigures 1–4 from the canonical JSON.
 
 No data, results, figures, or manuscript files are stored in this repository.
+
+## Revision 2 (BMC Health Services Research)
+
+Revision 2 reports net savings: every saving is computed from total payer cost, which the model now prices in full.
+
+- `run_revision2.py` runs the full revision-2 analysis at seed 42 with 2,000 iterations throughout and writes `output/revision2/canonical_results.json`.
+  - Payer cost is medical cost at each scenario's provider prices, plus administrative loading, plus the program investment the scenario commits to.
+  - The AI ACO scenarios pay 125% of Medicare for primary care and 110% for hospital and ED services. The status quo pays Medicaid levels of 67% for primary care (Zuckerman et al., *Health Aff* 2021) and 78% for hospitals (MACPAC 2017). A sensitivity analysis uses a 106% hospital level.
+  - Program investment is $39.5 PMPM for the AI ACO scenarios, $12.5 for care coordination without AI, and none for the status quo or administrative reform alone.
+  - The optimistic and pessimistic scenarios use their minority-report parameters, and care coordination without AI keeps the status-quo administrative rate.
+  - Administrative rates are sampled from the untruncated Beta distributions, and racial engagement penalties are sampled in every iteration.
+  - Engagement multipliers are attenuated by 10% to match the consensus staffing of 2.5 community health workers per 1,000 members.
+- `rev1_engine.py` is the parallel, memoised evaluator. It adds program investment and provider prices to simulated PMPM, and applies the scenario-specific parameters.
+- `run_validation_r2.py` re-runs the comparison with the 5 published reforms with seeded sampling. It writes `validation_results.json`, including the per-reform parameters exactly as coded.
+- `build_tables_r2.py` and `regenerate_figures_r2.py` build the manuscript tables and figures from the canonical JSON.
+- The welfare analysis treats the social-services budget and payment above status-quo prices as transfers to members and providers. A zero-value bound is also reported.
+
+Earlier pipelines are unchanged: the revision-2 behaviour is switched on only by keys that `run_revision2.py` adds to each parameter draw.
+
+The `main` branch holds the code used for the BMC Health Services Research manuscript. The tag `v2-individual-share` preserves an exploratory April 2026 variant that was not used for the manuscript results. In that variant, the AI encounter share is assigned per person by digital access, and the share is sampled.

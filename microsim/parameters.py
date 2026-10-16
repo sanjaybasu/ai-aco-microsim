@@ -211,33 +211,22 @@ class AIACOPSAParameters:
         # Administrative costs
         # -----------------------------------------------------------
         # Status quo MCO admin rate
-        # Status quo MCO admin rate. Re-anchored (revision 1) to the Milliman 2025
-        # Medicaid-focused MCO composite administrative loss ratio NET OF TAXES AND
-        # FEES = 7.7% of premium (CY2024). Taxes and fees are pass-through and are
-        # excluded from both arms, so the AI ACO 3.0% target is likewise net of
-        # taxes and fees (apples-to-apples).
+        # Re-anchored (revision 1) to the Milliman 2025 Medicaid-focused MCO
+        # composite administrative loss ratio NET OF TAXES AND FEES = 7.7% of
+        # premium (CY2024), the report's headline efficiency benchmark. Taxes and
+        # fees are pass-through and are excluded from both arms, so the AI ACO
+        # 3.0% target is likewise net of taxes and fees (apples-to-apples).
         self.sq_admin_rate = stats.beta(7.7, 92.3)  # ~7.7% (of premium, net of taxes/fees)
 
         # AI ACO admin rate (major innovation claim)
         self.ai_admin_rate = stats.beta(3, 97)  # ~3% (of premium)
 
         # -----------------------------------------------------------
-        # AI encounter share (PSA distribution)
-        # -----------------------------------------------------------
-        # Fraction of total encounters handled by AI-first virtual care.
-        # Consensus design: 58% (eTable 4). Beta distribution parameterized
-        # to reflect debate uncertainty (pessimistic minority: 40%; optimistic: 72%).
-        # Population-level mean; individual-level share conditioned on digital
-        # access in channels.py Channel 3.
-        # Source: Multi-agent Delphi consensus (Round 2, CV = 0.12).
-        self.ai_encounter_share = stats.beta(a=30, b=22)  # mean ~0.577, SD ~0.058
-
-        # -----------------------------------------------------------
         # Provider reimbursement → network adequacy
         # -----------------------------------------------------------
         # Provider rate as % of Medicare RBRVS
         # Source: Consensus design = 125% PCP, 110% hospital
-        # Current Medicaid average ~75% (MACPAC MACStats 2024)
+        # Current Medicaid average ≈ 75% (MACPAC MACStats 2024)
         # Affects referral completion for the non-AI care pathway
         self.provider_rate_pct_medicare = 125.0  # default; overridable per scenario
 
@@ -249,7 +238,8 @@ class AIACOPSAParameters:
         self.risk_dist_rising = stats.beta(25, 75)    # ~25%
         # high = 1 - low - rising
 
-    def sample(self, state: str = "OH") -> Dict[str, Any]:
+    def sample(self, state: str = "OH", clip_admin: bool = True,
+               sample_racial_penalty: bool = False) -> Dict[str, Any]:
         """
         Draw one complete parameter sample for a single PSA iteration.
 
@@ -317,8 +307,11 @@ class AIACOPSAParameters:
         ai_hedis = np.clip(self.ai_hedis_gap_closure.rvs(), 0.30, 0.70)
 
         # Admin
-        sq_admin = np.clip(self.sq_admin_rate.rvs(), 0.045, 0.13)
-        ai_admin = np.clip(self.ai_admin_rate.rvs(), 0.01, 0.06)
+        sq_admin = self.sq_admin_rate.rvs()
+        ai_admin = self.ai_admin_rate.rvs()
+        if clip_admin:  # legacy truncation; revision 2 samples the full Beta distributions
+            sq_admin = np.clip(sq_admin, 0.045, 0.13)
+            ai_admin = np.clip(ai_admin, 0.01, 0.06)
 
         # Detection/certification (equity channel)
         ai_detect_closure = np.clip(self.ai_detection_gap_closure.rvs(), 0.15, 0.60)
@@ -344,12 +337,12 @@ class AIACOPSAParameters:
             "ai_hedis_equity_improvement": np.clip(self.ai_hedis_equity_improvement.rvs(), 0.10, 0.40),
             "ai_pcp_increase": np.clip(self.ai_pcp_increase.rvs(), 0.05, 0.30),
             "engagement_racial_penalties": {
-                race: np.clip(dist.rvs(), 0.05, 0.30) if isinstance(dist, stats.rv_continuous) else 0.0
+                race: (np.clip(dist.rvs(), 0.05, 0.30)
+                       if (hasattr(dist, "rvs") if sample_racial_penalty else isinstance(dist, stats.rv_continuous))
+                       else 0.0)
                 for race, dist in self.engagement_racial_penalty.items()
             },
             "ai_equity_gap_reduction": np.clip(self.ai_equity_gap_reduction.rvs(), 0.10, 0.50),
             "provider_rate_pct_medicare": self.provider_rate_pct_medicare,
-            # Draw AI encounter share from PSA distribution (mean ~0.58)
-            # Individual-level share is conditioned on digital access in channels.py
-            "ai_encounter_share": float(np.clip(self.ai_encounter_share.rvs(), 0.35, 0.80)),
+            "ai_encounter_share": 0.58,  # consensus: 58% of encounters handled by AI
         }
