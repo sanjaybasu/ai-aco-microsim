@@ -14,7 +14,7 @@ This repository contains code to:
 ### Prerequisites
 
 - Python 3.11+
-- ~4 GB RAM (for 75,043-individual × 1,000-iteration PSA)
+- ~8 GB RAM for the full PSA
 - ACS PUMS data (see [Data](#data) below)
 - `ANTHROPIC_API_KEY` environment variable (for debate step only; microsimulation runs without it)
 
@@ -49,14 +49,13 @@ python process_results.py
 
 ### ACS PUMS (required)
 
-The microsimulation uses American Community Survey Public Use Microdata Sample (PUMS) data, 2019–2023:
+The microsimulation uses public American Community Survey Public Use Microdata Sample (PUMS) data:
 
 - **Source**: [Census Bureau ACS PUMS](https://www.census.gov/programs-surveys/acs/microdata.html)
-- **Inclusion**: Age 19–64, Medicaid enrollment (HINS4 = 1), 17 states with complete data
-- **N**: 75,043 individuals representing ~6.8 million Medicaid adults (population-weighted)
-- **Format**: Parquet file at `../medicaid-frailty-bias/data/acs_pums_medicaid_adults.parquet`
+- **Inclusion**: Age 19–64, Medicaid coverage (`HINS4 == 1`)
+- **Build**: `data/build_acs_medicaid_hins4.py` (see *Study population (revision 2)* below)
 
-To prepare the data, run the population loader from the companion frailty bias repository, or place a pre-built parquet file at the path above. The loader will create a synthetic population (N=10,000) for testing if the ACS data is not found.
+The loader creates a synthetic population for testing if the ACS file is not found. Data files are not committed.
 
 ### Parameter Sources (no download needed)
 
@@ -128,8 +127,6 @@ The population-level AI encounter share (58%, consensus design) is distributed a
 
 This ensures the population mean remains at the consensus 58% while correctly concentrating clinical effects among digitally connected beneficiaries. Prior to this update (v1), the 58% share was applied uniformly, which understated the equity impact of the digital divide on clinical outcomes.
 
-The Spearman rho of the admin rate difference (SQ admin - AI admin) with PMPM savings = 0.82 (with ACS PUMS data; reported as 0.89 in the manuscript which used a slightly different PSA prior). Both values confirm administrative overhead reduction as the dominant determinant.
-
 ### Probabilistic Sensitivity Analysis
 
 - 1,000 iterations drawing all parameters from Beta/Gamma/Normal distributions
@@ -137,7 +134,6 @@ The Spearman rho of the admin rate difference (SQ admin - AI admin) with PMPM sa
 - 7 scenarios: status quo MCO, AI ACO (consensus/optimistic/pessimistic), enhanced FFS, AI ACO universal, admin-reform-only
 - 95% uncertainty intervals from paired iteration-level differences (PMPM savings are computed per-iteration as SQ[i] − AI[i])
 - Population-weighted using ACS person weights (PWGTP)
-- Monte Carlo standard error for PMPM savings: ~$0.52 (well below reporting threshold)
 
 ### Welfare and Sensitivity Analyses
 
@@ -152,21 +148,7 @@ QALY weights: hospitalization 0.05, ED 0.01, PCP 0.002 per event. Consistent wit
 
 ### Structural Sensitivity
 
-The admin-reform-only scenario (S6) applies AI administrative cost reduction (3% overhead) with identical clinical parameters to the status quo, isolating administrative savings from AI clinical efficacy assumptions. P(positive net savings | admin reform only) = 97–99% across PSA iterations.
-
-## Verification
-
-The status quo scenario calibrates within published ranges (eTable 6 in appendix):
-
-| Metric | Simulated | Published Range |
-|---|---|---|
-| PMPM | $483 | $450–$550 (MACPAC) |
-| Hospitalizations/1,000 PY | 196 | 150–220 (HCUP/MEPS) |
-| ED visits/1,000 PY | 715 | 550–850 (MEPS) |
-| HEDIS gap closure | 35% | 30–45% (NCQA) |
-| Admin cost (% premium) | 8.3% | 8–13% (CMS) |
-
-Note: values above are from the synthetic population (N=10,000). The manuscript reports values from the full ACS PUMS population (N=75,043); results are consistent within rounding.
+The admin-reform-only scenario (S6) applies AI administrative cost reduction (3% overhead) with identical clinical parameters to the status quo, isolating administrative savings from AI clinical efficacy assumptions.
 
 ## Changelog
 
@@ -222,4 +204,4 @@ The `main` branch holds the code used for the BMC Health Services Research manus
 
 ### Study population (revision 2)
 
-`data/build_acs_medicaid_hins4.py` builds the cohort from the ACS 2022 1-year PUMS national person file. It keeps adults aged 19–64 with Medicaid, Medical Assistance, or other government-assistance coverage (`HINS4 == 1`; `HINS3` is Medicare) and excludes Puerto Rico. The resulting cohort is 312,221 records representing about 32.6 million adults. The script reuses the download, race classification, and metro lookup of the companion `medicaid-frailty-bias/data/acs_pums.py` loader. Data files are not committed.
+`data/build_acs_medicaid_hins4.py` builds the cohort from the ACS 2022 1-year PUMS national person file. It keeps adults aged 19–64 with Medicaid, Medical Assistance, or other government-assistance coverage (`HINS4 == 1`; `HINS3` is Medicare) and excludes Puerto Rico. The script reuses the download, race classification, and metro lookup of the companion `medicaid-frailty-bias/data/acs_pums.py` loader. Data files are not committed.
