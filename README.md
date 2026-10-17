@@ -219,3 +219,7 @@ Revision 2 reports net savings: every saving is computed from total payer cost, 
 Earlier pipelines are unchanged: the revision-2 behaviour is switched on only by keys that `run_revision2.py` adds to each parameter draw.
 
 The `main` branch holds the code used for the BMC Health Services Research manuscript. The tag `v2-individual-share` preserves an exploratory April 2026 variant that was not used for the manuscript results. In that variant, the AI encounter share is assigned per person by digital access, and the share is sampled.
+
+### Study population (revision 2)
+
+`data/build_acs_medicaid_hins4.py` builds the cohort from the ACS 2022 1-year PUMS national person file. It keeps adults aged 19–64 with Medicaid, Medical Assistance, or other government-assistance coverage (`HINS4 == 1`; `HINS3` is Medicare) and excludes Puerto Rico. The resulting cohort is 312,221 records representing about 32.6 million adults. The script reuses the download, race classification, and metro lookup of the companion `medicaid-frailty-bias/data/acs_pums.py` loader. Data files are not committed.

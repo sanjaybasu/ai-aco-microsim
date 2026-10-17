@@ -193,11 +193,76 @@ M["val_mae"] = f"{_V['aggregate']['mean_absolute_error']*100:.1f}"
 M["val_cal"] = f"{_V['aggregate']['mean_calibration_ratio']:.2f}"
 M["val_cov_n"] = f"{round(_V['aggregate']['coverage_probability']*_V['aggregate']['n_comparisons'])}"
 M["val_n"] = f"{int(_V['aggregate']['n_comparisons'])}"
+_ov = 0; _mx = 0.0
+for _r in _V["results"]:
+    for _m in _r["metrics"].values():
+        if _m["observed"] is None:
+            continue
+        _lo, _hi = _m["observed_95ci"]; _s0, _s1 = _m["simulated_95ui"]
+        _ov += int(_lo <= _s1 and _s0 <= _hi)
+        if not _m["coverage"]:
+            _mx = max(_mx, abs(_m["simulated_mean"] - _m["observed"]))
+M["val_overlap_n"] = f"{_ov}"
+M["val_miss_n"] = f"{int(_V['aggregate']['n_comparisons']) - round(_V['aggregate']['coverage_probability'] * _V['aggregate']['n_comparisons'])}"
+M["val_max_miss"] = f"{100*_mx:.1f}"
+M["atk_sq_1"] = f"{C['atkinson']['1.0']['sq_mco']['atkinson_index']:.4f}"
 _vr = {r["reform"]: r["metrics"] for r in _V["results"]}
 for tag, ref, oc in [("or_sp", "oregon_cco", "pmpm_pct_change"), ("chw_h", "chw_impact", "hosp_pct_change"),
                      ("cpc_sp", "cpc_plus", "pmpm_pct_change")]:
     M[f"val_{tag}_obs"] = num(_vr[ref][oc]["observed"] * 100, 1)
     M[f"val_{tag}_sim"] = num(_vr[ref][oc]["simulated_mean"] * 100, 1)
+
+# ---------- study population (eTable 3; Methods) from the cohort file ----------
+_POP = pd.read_parquet(ROOT / "data" / "acs_pums_medicaid_adults_hins4.parquet")
+_w = _POP["PWGTP"]
+_W = _w.sum()
+_BB = {"white_metro": .85, "white_nonmetro": .72, "black_metro": .78, "black_nonmetro": .62,
+       "hispanic_metro": .74, "hispanic_nonmetro": .58, "aian_metro": .68, "aian_nonmetro": .45}
+_bb = (_POP["race_eth"] + "_" + _POP["metro_status"]).map(_BB).fillna(0.75)
+M["pop_n"] = f"{len(_POP):,}"
+M["pop_wt_m"] = f"{_W/1e6:.1f}"
+M["pop_mean_age"] = f"{np.average(_POP['AGEP'], weights=_w):.0f}"
+M["pop_dis_pct"] = f"{100*_w[_POP['DIS'] == 1].sum()/_W:.1f}"
+M["pop_bb_pct"] = f"{100*(_bb*_w).sum()/_W:.1f}"
+M["pop_nonbb_pct"] = f"{100 - 100*(_bb*_w).sum()/_W:.0f}"
+M["pop_states"] = f"{_POP['state'].nunique()}"
+
+
+def build_etable3():
+    def row(lbl, mask):
+        return f"| {lbl} | {_w[mask].sum():,.0f} ({100*_w[mask].sum()/_W:.1f}) |"
+    age = _POP["AGEP"]
+    mu = np.average(age, weights=_w); sd = np.sqrt(np.average((age - mu) ** 2, weights=_w))
+    r = _POP["race_eth"]
+    L = ["| Characteristic | No. (%) or Mean (SD) |", "|---|---|",
+         f"| Individuals, unweighted | {len(_POP):,} |", f"| Individuals, weighted | {_W:,.0f} |",
+         f"| Age, yr | {mu:.1f} ({sd:.1f}) |",
+         row("19–34", age <= 34), row("35–49", (age >= 35) & (age <= 49)), row("50–64", age >= 50),
+         row("Female sex", _POP["SEX"] == 2), "| Race and ethnicity | |",
+         row("White non-Hispanic", r == "white"), row("Black", r == "black"), row("Hispanic", r == "hispanic"),
+         row("American Indian/Alaska Native", r == "aian"), row("Asian", r == "asian"),
+         row("Native Hawaiian/Pacific Islander, other, or multiracial", r.isin(["nhpi", "other"])),
+         row("Metropolitan residence", _POP["metro_status"] == "metro"),
+         row("Any disability", _POP["DIS"] == 1),
+         row("ADL or IADL limitation", _POP["adl_iadl_disability"] == 1),
+         row("Income ≤138% FPL", _POP["POVPIP"].fillna(999) <= 138),
+         row("College degree or higher", _POP["college_plus"] == 1),
+         row("Also covered by Medicare", _POP["HINS3"] == 1),
+         f"| Broadband internet access (modeled) | {(_bb*_w).sum():,.0f} ({100*(_bb*_w).sum()/_W:.1f}) |"]
+    return "\n".join(L)
+
+
+def build_atkinson():
+    at = C["atkinson"]
+    L = ["| Inequality aversion (ε) | Status quo MCO | AI ACO consensus | Care coordination only | Administrative reform only |",
+         "|---|---|---|---|---|"]
+    for e in ["0.5", "1.0", "2.0"]:
+        L.append(f"| {e} | " + " | ".join(f"{at[e][k]['atkinson_index']:.4f}" for k in ["sq_mco", "ai_aco", "enhanced_ffs", "admin_only"]) + " |")
+    return "\n".join(L)
+
+
+M["atk_sq_1"] = f"{C['atkinson']['1.0']['sq_mco']['atkinson_index']:.4f}"
+M["atk_ai_1"] = f"{C['atkinson']['1.0']['ai_aco']['atkinson_index']:.4f}"
 
 # ---------- table builders ----------
 ORDER5 = [("Status Quo MCO (S0)", "sq_mco"), ("AI ACO Consensus (S1)", "ai_aco"),
@@ -236,7 +301,7 @@ def build_table1():
 
 
 def build_etable5():
-    lines = ["| AI Efficacy (% of Human-Trial Benchmark) | Net PMPM Savings (\\$) | Net PMPM 95% UI | Probability of Net Savings | Gross PMPM Savings (\\$) | Admin Component (\\$) | Clinical Component, Gross (\\$) | Hosp Reduction (per 1,000 PY) | ED Reduction (per 1,000 PY) | HEDIS Improvement (pp) |",
+    lines = ["| AI Efficacy (% of Human-Trial Benchmark) | Net PMPM Savings (\\$) | Net PMPM 95% UI | Probability of Net Savings | Gross PMPM Savings (\\$) | Admin Component (\\$) | Non-Administrative Component, Gross, incl. Provider-Price Premium (\\$) | Hosp Reduction (per 1,000 PY) | ED Reduction (per 1,000 PY) | HEDIS Improvement (pp) |",
              "|---|---|---|---|---|---|---|---|---|---|"]
     for r in C["discount_sweep"]:
         lines.append(f"| {r['ai_efficacy_pct']:.0f}%{' (no discount)' if r['discount']==0 else ''} | {usd(r['pmpm_total'])} | {usd(r['pmpm_p025'])} to {usd(r['pmpm_p975'])} | {pct(r['prob_net_savings'])} | {usd(r['pmpm_total_gross'])} | {usd(r['pmpm_admin'])} | {usd(r['pmpm_clinical_gross'])} | {r['hosp_reduction']:.1f} | {r['ed_reduction']:.1f} | {r['hedis_improvement']:.1f} |")
@@ -519,6 +584,7 @@ tables = {"TABLE1": build_table1(), "ETABLE5": build_etable5(), "ETABLE9": build
           "ETABLE20": build_etable20(), "ETABLE21": build_etable21(),
           "EQUITY_RACE": build_equity_race(), "WELFARE_DECOMP": build_welfare_decomp(),
           "ETABLE8_PARAMS": build_etable8()[0], "ETABLE8_RESULTS": build_etable8()[1],
+          "ETABLE3": build_etable3(), "ATKINSON": build_atkinson(),
           "SPEARMAN": build_spearman()}
 for name, t in tables.items():
     (OUT / f"table_{name}.md").write_text(t)

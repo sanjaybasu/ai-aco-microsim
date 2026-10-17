@@ -1,0 +1,6 @@
+
+# local data (never committed)
+data/*.parquet
+data/*.log
+*.parquet
+__pycache__/

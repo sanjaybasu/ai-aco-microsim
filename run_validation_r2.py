@@ -24,7 +24,7 @@ import functools  # noqa: E402
 AIACOPSAParameters.sample = functools.partialmethod(
     AIACOPSAParameters.sample, clip_admin=False, sample_racial_penalty=True)
 
-POP = "/Users/sanjaybasu/waymark-local/packaging/medicaid-frailty-bias/data/acs_pums_medicaid_adults.parquet"
+POP = str(ROOT / "data" / "acs_pums_medicaid_adults_hins4.parquet")  # Medicaid (HINS4) adults 19-64
 OUT = ROOT / "output" / "revision2"
 SEED, N = 42, 200
 REFORMS = ["oregon_cco", "medicare_pioneer_aco", "chw_impact", "mssp", "cpc_plus"]

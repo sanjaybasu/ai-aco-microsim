@@ -63,7 +63,7 @@ sys.path.insert(0, str(ROOT))
 
 from microsim.parameters import AIACOPSAParameters  # noqa: E402
 from microsim.population import load_population  # noqa: E402
-from microsim.welfare import compute_welfare, sensitivity_wtp  # noqa: E402
+from microsim.welfare import compute_welfare, sensitivity_wtp, compute_equity_weighted_welfare  # noqa: E402
 from rev1_engine import Engine  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -76,7 +76,8 @@ SEED = 42
 SEED_REPLICATE = 20260726          # independent seed, run-to-run stability check
 N = int(os.environ.get("REV1_N", 2000))          # uniform iteration count
 N_REP = int(os.environ.get("REV1_N_REP", 2000))  # replicate iterations
-POP_PATH = "/Users/sanjaybasu/waymark-local/packaging/medicaid-frailty-bias/data/acs_pums_medicaid_adults.parquet"
+# ACS 2022 1-year PUMS, Medicaid (HINS4) adults 19-64; built by data/build_acs_medicaid_hins4.py
+POP_PATH = str(Path(__file__).resolve().parent / "data" / "acs_pums_medicaid_adults_hins4.parquet")
 
 MAIN_SCENARIOS = [
     "sq_mco", "ai_aco", "ai_aco_optimistic", "ai_aco_pessimistic",
@@ -364,6 +365,21 @@ def main():
                  f"GS {aci['govt_surplus_per_member_annual']:.0f}, "
                  f"PS {aci['producer_surplus_per_member']:.0f}); "
                  f"aggregate ${canonical['welfare']['aggregate_net_surplus_billions']:.1f}B")
+
+        # Atkinson equity-weighted health (eAppendix D)
+        atk = {}
+        for eps in (0.5, 1.0, 2.0):
+            rows_ = []
+            for scen in ("sq_mco", "ai_aco", "admin_only", "enhanced_ffs"):
+                d_ = main_res[scen].copy()
+                d_["scenario"] = scen
+                rows_.append(d_[["scenario", "equity_by_race"]])
+            res_ = compute_equity_weighted_welfare(pd.concat(rows_, ignore_index=True), epsilon=eps)
+            atk[str(eps)] = {r["scenario"]: {"atkinson_index": float(r["atkinson_index"]),
+                                            "mean_health": float(r["mean_health"]),
+                                            "ede": float(r["equally_distributed_equivalent"])}
+                             for _, r in res_.iterrows()}
+        canonical["atkinson"] = atk
 
         # ============================================================
         # 3. DISCOUNT-FACTOR SWEEP (eTable 5) -- d=0 IS the main consensus cell
