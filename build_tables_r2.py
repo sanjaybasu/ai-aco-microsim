@@ -21,8 +21,16 @@ PI = C["program_investment"]
 
 def usd(x, dec=0):
     """Dollar amount with a true minus sign for negatives."""
+    if dec == 0 and x != 0 and abs(x) < 0.5:
+        dec = 1  # a nonzero amount never prints as $0
     s = f"{abs(x):,.{dec}f}"
     return f"−${s}" if round(x, dec) < 0 else f"${s}"
+
+
+def pp(p):
+    """Probability as a percent to one decimal, rounded half up (k of 2,000 draws ties at .x5)."""
+    from decimal import Decimal, ROUND_HALF_UP
+    return str(Decimal(str(round(p * 100, 6))).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def num(x, dec=0):
@@ -30,8 +38,8 @@ def num(x, dec=0):
     return f"−{s}" if round(x, dec) < 0 else s
 
 
-def pct(p, dec=0):
-    return f"{p*100:.{dec}f}%"
+def pct(p, dec=1):
+    return f"{pp(p)}%"
 
 
 # paired reduction UIs from psa parquets
@@ -57,7 +65,7 @@ M["hedis_ai"] = f"{sc['ai_aco']['hedis_gap_closure']['mean']*100:.0f}"
 M["net_sav"] = num(H["ai_pmpm_savings"]["mean"])
 M["net_sav_1dp"] = num(H["ai_pmpm_savings"]["mean"], 1)
 M["net_ui"] = f"{num(H['ai_pmpm_savings']['p025'])} to {num(H['ai_pmpm_savings']['p975'])}"
-M["prob_net_full"] = f"{H['prob_net_savings_ai']*100:.1f}"
+M["prob_net_full"] = f"{pp(H['prob_net_savings_ai'])}"
 M["gross_sav"] = f"{H['ai_pmpm_savings_gross']['mean']:.0f}"
 M["gross_ui"] = f"{H['ai_pmpm_savings_gross']['p025']:.0f} to {H['ai_pmpm_savings_gross']['p975']:.0f}"
 M["admin_only"] = f"{H['admin_only_pmpm_savings']['mean']:.0f}"
@@ -65,7 +73,7 @@ M["admin_only_1dp"] = f"{H['admin_only_pmpm_savings']['mean']:.1f}"
 M["admin_only_ui"] = f"{num(H['admin_only_pmpm_savings']['p025'])} to {num(H['admin_only_pmpm_savings']['p975'])}"
 M["admin_share_gross"] = f"{H['admin_share_pct']:.0f}"
 M["clinical_gross"] = f"{H['clinical_component_gross']:.0f}"
-M["prob_admin"] = f"{sc['admin_only']['prob_net_savings']*100:.1f}"
+M["prob_admin"] = f"{pp(sc['admin_only']['prob_net_savings'])}"
 M["rho_admin"] = f"{C['parameter_importance']['admin_diff']:.2f}"
 M["clinical_combined_rho"] = f"{max(abs(C['parameter_importance'][k]) for k in ['base_hosp','eng_mult','hosp_rr','ed_rr']):.2f}"
 M["s0_admin_pct"] = f"{H['sq_admin_mean']*100:.1f}"
@@ -97,16 +105,16 @@ aos = {round(r["ai_admin_rate"] * 100, 2): r for r in C["admin_only_sweep"]}
 for rate in [2.0, 2.5, 3.0, 5.0, 5.5, 6.0, 6.5, 7.0, 7.7, 9.0]:
     tag = str(rate).replace(".", "p")
     M[f"full_net_{tag}"] = num(asw[rate]["pmpm_savings"])
-    M[f"full_prob_{tag}"] = f"{asw[rate]['prob_net_savings']*100:.0f}"
+    M[f"full_prob_{tag}"] = f"{pp(asw[rate]['prob_net_savings'])}"
     M[f"full_gross_{tag}"] = f"{asw[rate]['pmpm_savings_gross']:.0f}"
     M[f"ao_net_{tag}"] = num(aos[rate]["pmpm_savings"], 1)
-    M[f"ao_prob_{tag}"] = f"{aos[rate]['prob_net_savings']*100:.1f}"
+    M[f"ao_prob_{tag}"] = f"{pp(aos[rate]['prob_net_savings'])}"
 # scenarios
 for key, tag in [("ai_aco_pessimistic", "pess"), ("ai_aco_optimistic", "opt"),
                  ("enhanced_ffs", "s4")]:
     M[f"{tag}_net"] = num(sc[key]["pmpm_savings"]["mean"])
     M[f"{tag}_gross"] = f"{sc[key]['pmpm_savings_gross']['mean']:.0f}"
-    M[f"{tag}_prob"] = f"{sc[key]['prob_net_savings']*100:.0f}"
+    M[f"{tag}_prob"] = f"{pp(sc[key]['prob_net_savings'])}"
     M[f"{tag}_hosp"] = f"{sc['sq_mco']['hosp_per_1000']['mean']-sc[key]['hosp_per_1000']['mean']:.0f}"
 M["s4_invest"] = f"{sc['enhanced_ffs']['program_investment_pmpm']:.1f}"
 # discount sweep
@@ -116,7 +124,7 @@ for tag, d in [("d80", d80), ("d70", d70), ("d50", d50)]:
     M[f"{tag}_gross"] = f"{d['pmpm_total_gross']:.0f}"
     M[f"{tag}_clin_gross"] = f"{d['pmpm_clinical_gross']:.0f}"
     M[f"{tag}_hosp"] = f"{d['hosp_reduction']:.0f}"
-    M[f"{tag}_prob"] = f"{d['prob_net_savings']*100:.0f}"
+    M[f"{tag}_prob"] = f"{pp(d['prob_net_savings'])}"
 M["d_admin"] = f"{d0['pmpm_admin']:.0f}"
 # engagement / pmpm levels
 M["eng_sq"] = f"{sc['sq_mco']['engagement_rate']['mean']*100:.0f}"
@@ -127,11 +135,11 @@ M["ai_pmpm_claims"] = f"{sc['ai_aco']['pmpm_claims']['mean']:.0f}"
 # state/plan baseline variation
 sv = {r["baseline_label"]: r for r in C["state_admin_variation"]}
 M["sv_lo_net"] = num(sv["lowest_quartile_5.5"]["pmpm_savings"])
-M["sv_lo_prob"] = f"{sv['lowest_quartile_5.5']['prob_net']*100:.0f}"
+M["sv_lo_prob"] = f"{pp(sv['lowest_quartile_5.5']['prob_net'])}"
 M["sv_hi_net"] = num(sv["highest_quartile_11.7"]["pmpm_savings"])
-M["sv_hi_prob"] = f"{sv['highest_quartile_11.7']['prob_net']*100:.0f}"
+M["sv_hi_prob"] = f"{pp(sv['highest_quartile_11.7']['prob_net'])}"
 M["sv_101_net"] = num(sv["all_plan_composite_10.1"]["pmpm_savings"])
-M["sv_101_prob"] = f"{sv['all_plan_composite_10.1']['prob_net']*100:.0f}"
+M["sv_101_prob"] = f"{pp(sv['all_plan_composite_10.1']['prob_net'])}"
 # CHW staffing
 for r in C["chw_staffing"]:
     tag = str(r["chw_per_1000"]).replace(".", "p")
@@ -145,7 +153,7 @@ M["rate67_net"] = num(rs[67]["pmpm_sav"])
 M["rate125_net"] = num(rs[125]["pmpm_sav"])
 es = {(r["share"], r["rate"]): r for r in C["encounter_share"]}
 M["share20_125_net"] = num(es[(0.20, 125)]["pmpm_sav"])
-M["share20_125_prob"] = f"{es[(0.20, 125)]['prob_net']*100:.0f}"
+M["share20_125_prob"] = f"{pp(es[(0.20, 125)]['prob_net'])}"
 M["share_net_min"] = num(min(r["pmpm_sav"] for r in C["encounter_share"]))
 M["share_net_max"] = num(max(r["pmpm_sav"] for r in C["encounter_share"]))
 M["share_gross_min"] = f"{min(r['pmpm_sav_gross'] for r in C['encounter_share']):.0f}"
@@ -183,7 +191,7 @@ _S = C["pricing_spillover_sensitivity"]
 for tag, key in [("hosp106", "hospital_sq_106_supplemental"), ("unpriced", "provider_rates_unpriced"),
                  ("nospill", "no_nonengaged_spillover")]:
     M[f"{tag}_net"] = num(_S[key]["pmpm_savings"])
-    M[f"{tag}_prob"] = f"{_S[key]['prob_net_savings']*100:.1f}"
+    M[f"{tag}_prob"] = f"{pp(_S[key]['prob_net_savings'])}"
     M[f"{tag}_hosp"] = f"{_S[key]['hosp_reduction']:.0f}"
     M[f"{tag}_ed"] = f"{_S[key]['ed_reduction']:.0f}"
 M["provider_cost"] = f"{C['provider_rate_cost_pmpm']:.0f}"
@@ -401,6 +409,8 @@ def build_etable17():
              "", "*Full AI ACO model (S1): gross and net savings.*", "",
              "| Quantity | PMPM |", "|---|---|",
              f"| Gross PMPM savings before program investment, at the design's provider prices (95% UI) | {usd(H['ai_pmpm_savings_gross']['mean'],1)} ({usd(H['ai_pmpm_savings_gross']['p025'])} to {usd(H['ai_pmpm_savings_gross']['p975'])}) |",
+             f"| Of which: administrative overhead reduction | {usd(H['admin_only_pmpm_savings']['mean'],1)} |",
+             f"| Of which: clinical utilization reductions | {usd(H['ai_pmpm_savings_gross']['mean'] + C['provider_rate_cost_pmpm'] - H['admin_only_pmpm_savings']['mean'],1)} |",
              f"| Of which: payment above status-quo Medicaid prices | −${C['provider_rate_cost_pmpm']:.1f} |",
              f"| Less program investment (steady state) | −${PI['total_investment_steady']:.1f} |",
              f"| Net PMPM savings (95% UI) | {usd(PI['net_pmpm_savings_steady'],1)} ({usd(lo)} to {usd(hi)}) |",
@@ -485,10 +495,13 @@ def build_etable21():
             f"{s['grid_rate_used']*100:.1f}% | {usd(s['admin_only_pmpm_savings'],1)} | "
             f"{pct(s['admin_only_prob_net_savings'])} | {usd(s['pmpm_savings'],1)} | "
             f"{pct(s['prob_net_savings'])} | {usd(s['pmpm_savings_gross'],1)} |")
+    # the consensus row uses the same fixed-rate sweep as the rows above it
+    ao3 = next(r for r in C["admin_only_sweep"] if abs(r["ai_admin_rate"] - 0.03) < 1e-9)
+    fm3 = next(r for r in C["admin_sweep"] if abs(r["ai_admin_rate"] - 0.03) < 1e-9)
     lines.append(f"| Consensus design target (AI plus nonprofit organizational form) | 3.0% | "
-                 f"{usd(H['admin_only_pmpm_savings']['mean'],1)} | {pct(H['prob_net_savings_admin_only'])} | "
-                 f"{usd(H['ai_pmpm_savings']['mean'],1)} | {pct(H['prob_net_savings_ai'])} | "
-                 f"{usd(H['ai_pmpm_savings_gross']['mean'],1)} |")
+                 f"{usd(ao3['pmpm_savings'],1)} | {pct(ao3['prob_net_savings'])} | "
+                 f"{usd(fm3['pmpm_savings'],1)} | {pct(fm3['prob_net_savings'])} | "
+                 f"{usd(fm3['pmpm_savings_gross'],1)} |")
     return "\n".join(lines)
 
 
@@ -533,7 +546,7 @@ def build_welfare_decomp():
         f"| — of which: administrative savings | {usd(w_['admin_savings'])} |",
         f"| — of which: program investment | {usd(-w_['program_investment'])} |",
         f"| Producer surplus (primary care volume) | {usd(w_['producer_surplus'])} |",
-        f"| Producer transfer (payment above status-quo prices, valued at face value) | {usd(w_['producer_transfer'])} |",
+        f"| Provider transfer (payment above status-quo prices, valued at face value) | {usd(w_['producer_transfer'])} |",
         f"| Net social surplus | {usd(w_['net_surplus'])} |",
         f"| Net social surplus with both transfers valued at zero | {usd(z_['net_surplus'])} |",
     ])
@@ -543,11 +556,11 @@ def build_spearman():
     pi = C["parameter_importance"]
     return "\n".join([
         "| Parameter | Source type | Spearman ρ | Contribution |", "|---|---|---|---|",
-        f"| Administrative cost rate difference | Mixed (status quo empirical, Milliman; AI ACO rate assumed) | {pi['admin_diff']:.2f} | Dominant |",
-        f"| Baseline utilization rates | Empirical (MEPS/HCUP) | {pi['base_hosp']:.2f} | Modest |",
-        f"| Engagement multiplier | Mixed (SQ empirical; AI multipliers projected) | {pi['eng_mult']:.2f} | Modest |",
-        f"| AI ED RR reduction | Projected (anchored to Oregon CCO) | {pi['ed_rr']:.2f} | Minor |",
-        f"| AI hospitalization RR reduction | Projected (anchored to ACO natural experiments) | {pi['hosp_rr']:.2f} | Negligible |",
+        f"| Administrative cost rate difference | Mixed (status quo empirical, Milliman; AI ACO rate assumed) | {num(pi['admin_diff'],2)} | Dominant |",
+        f"| Baseline utilization rates | Empirical (MEPS/HCUP) | {num(pi['base_hosp'],2)} | Modest |",
+        f"| Engagement multiplier | Mixed (SQ empirical; AI multipliers projected) | {num(pi['eng_mult'],2)} | Modest |",
+        f"| AI hospitalization RR reduction | Projected (anchored to ACO natural experiments) | {num(pi['hosp_rr'],2)} | Minor |",
+        f"| AI ED RR reduction | Projected (anchored to Oregon CCO) | {num(pi['ed_rr'],2)} | Negligible |",
     ])
 
 
@@ -564,7 +577,7 @@ M["legal_breakeven_pp"] = f"{_L['breakeven_reserve_pp_admin_only']:.1f}"
 M["legal_breakeven_pmpm"] = f"{_L['breakeven_reserve_pmpm_admin_only']:.0f}"
 _l1 = [r for r in _L["rows"] if abs(r["legal_reserve_pp_of_premium"] - 1.0) < 1e-6][0]
 M["legal_1pp_admin_only"] = f"{_l1['admin_only_pmpm_savings']:.1f}"
-M["legal_1pp_admin_only_prob"] = f"{_l1['admin_only_prob_net_savings']*100:.0f}"
+M["legal_1pp_admin_only_prob"] = f"{pp(_l1['admin_only_prob_net_savings'])}"
 M["legal_1pp_full_net"] = num(_l1["full_model_pmpm_net_of_investment"], 1)
 M["legal_1pp_full_gross"] = f"{_l1['full_model_pmpm_savings_gross']:.1f}"
 for tag, key in [("lo", "ai_only_8pct"), ("hi", "ai_only_14pct")]:
@@ -572,9 +585,9 @@ for tag, key in [("lo", "ai_only_8pct"), ("hi", "ai_only_14pct")]:
     M[f"greylit_rate_{tag}"] = f"{s_['grid_rate_used']*100:.1f}"
     M[f"greylit_full_net_{tag}"] = num(s_["pmpm_savings"])
     M[f"greylit_full_gross_{tag}"] = f"{s_['pmpm_savings_gross']:.0f}"
-    M[f"greylit_full_prob_{tag}"] = f"{s_['prob_net_savings']*100:.0f}"
+    M[f"greylit_full_prob_{tag}"] = f"{pp(s_['prob_net_savings'])}"
     M[f"greylit_admin_only_{tag}"] = f"{s_['admin_only_pmpm_savings']:.0f}"
-    M[f"greylit_admin_only_prob_{tag}"] = f"{s_['admin_only_prob_net_savings']*100:.0f}"
+    M[f"greylit_admin_only_prob_{tag}"] = f"{pp(s_['admin_only_prob_net_savings'])}"
 json.dump(M, open(OUT / "markers.json", "w"), indent=2)
 
 tables = {"TABLE1": build_table1(), "ETABLE5": build_etable5(), "ETABLE9": build_etable9(),

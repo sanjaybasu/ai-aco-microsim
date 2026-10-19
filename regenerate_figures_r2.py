@@ -29,6 +29,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 ROOT = Path(__file__).resolve().parent
@@ -47,9 +48,9 @@ BENCH = {  # published benchmark ranges, Figure 2 panel A
 }
 # (reform, outcome, observed, obs_lo, obs_hi, simulated, sim_lo, sim_hi)
 _VAL = json.load(open(ROOT / "output" / "revision2" / "validation_results.json"))
-_NM = {"oregon_cco": "Oregon CCO", "medicare_pioneer_aco": "Pioneer ACO", "chw_impact": "CHW/IMPaCT",
+_NM = {"oregon_cco": "Oregon CCO", "medicare_pioneer_aco": "Pioneer ACO", "chw_impact": "CHW IMPaCT trials",
        "mssp": "MSSP", "cpc_plus": "CPC+"}
-_OC = {"pmpm_pct_change": "Spending", "hosp_pct_change": "Hosp", "ed_pct_change": "ED"}
+_OC = {"pmpm_pct_change": "Spending", "hosp_pct_change": "Hospitalizations", "ed_pct_change": "ED visits"}
 BACKTEST = [(_NM[r["reform"]], _OC[k], 100 * m["observed"], 100 * m["observed_95ci"][0],
              100 * m["observed_95ci"][1], 100 * m["simulated_mean"], 100 * m["simulated_95ui"][0],
              100 * m["simulated_95ui"][1])
@@ -98,46 +99,49 @@ def fig1_design():
                                     color="#555555", shrinkA=1, shrinkB=1))
 
     panel(1, 20, 45, 78, C_PHASE1, "Phase 1: Multi-agent AI ACO design")
-    panel(53, 20, 46, 78, C_PHASE2, "Phase 2: Validated microsimulation evaluation")
+    panel(53, 20, 46, 78, C_PHASE2, "Phase 2: Microsimulation evaluation")
 
     box(3.5, 80, 40, 12, "8 expert AI agent personas",
         "Clinical, regulatory, actuarial, and equity perspectives\n"
         "All agents instantiated on Claude Sonnet 4\n(model claude-sonnet-4-20250514)", fs=9)
     arrow(23.5, 80, 23.5, 73)
     box(3.5, 59, 40, 13, "Modified Delphi process",
-        "Iterative debate across 12 organizational domains\n"
+        "Iterative debate across 12 parameter domains\n"
         "Convergence: CV < 0.15 quantitative, ≥ 75% categorical", fs=9)
     arrow(13.5, 59, 13.5, 49)
     arrow(33.5, 59, 33.5, 49)
     box(3.5, 35, 19, 13, "AI ACO consensus design", "60 quantitative\nparameters", fc=C_OUT, fs=9)
     box(24.5, 35, 19, 13, "Minority dissent reports",
-        "7 of 8 agents dissented\n(pessimistic scenario S3)", fc=C_DIS, fs=9)
+        "7 of 8 agents dissented\n(set direction of S2 and S3)", fc=C_DIS, fs=9)
 
-    box(56, 85, 40, 8, "Population data (n = 75,043)",
+    box(56, 85, 40, 8, f"Population data (n = {CANON['meta']['n_individuals']:,})",
         "ACS PUMS Medicaid adults aged 19–64, nationally weighted", fs=9)
     arrow(76, 85, 76, 81)
     box(56, 71, 40, 9, "6 evaluation scenarios",
-        "Status quo MCO | AI ACO consensus, optimistic, pessimistic\n"
-        "Care coordination only | Administrative only", fs=9)
+        "S0 status quo MCO | S1 AI ACO consensus | S2 optimistic | S3 pessimistic\n"
+        "S4 care coordination only | S6 administrative reform only", fs=8.5)
     arrow(76, 71, 76, 67)
     box(56, 57, 40, 8, "5-stage microsimulation",
         "Digital access | Engagement | Utilization | Quality | Equity", fs=9)
     arrow(76, 57, 76, 53)
     box(56, 43, 40, 8,
         f"{CANON['meta']['n_iterations']:,}-iteration probabilistic sensitivity analysis",
-        "Paired design; payer cost includes provider prices\nand program investment", fs=9)
+        "Payer cost includes provider prices and program investment", fs=9)
     arrow(76, 43, 76, 39)
     box(56, 27, 12.4, 11, "Outcomes", "Hospitalizations\nED visits\nPMPM cost", fc="#D6E4F0", fs=8.5)
     box(69.8, 27, 12.4, 11, "Equity", "Race and\nmetropolitan\nstatus gaps", fc="#E2EFDA", fs=8.5)
     box(83.6, 27, 12.4, 11, "Welfare", "Net social\nsurplus", fc="#FCE4D6", fs=8.5)
 
-    # Consensus parameters flow from Phase 1 into the Phase 2 scenario set along a
-    # channel below every Phase 2 result box, so no connector crosses a box.
+    # Both parameter sets flow from Phase 1 into Phase 2 along separate horizontal
+    # channels: the dissent channel (y = 29) runs above the consensus channel (y = 24)
+    # and starts to the right of the consensus drop, so no two connectors cross.
     arrow(13.0, 35, 13.0, 24, style="-")
     arrow(13.0, 24, 54.0, 24, style="-|>")
-    ax.text(33.5, 25.2, "consensus parameters", fontsize=9, color="#333333", ha="center")
-    arrow(34.0, 35, 34.0, 30, ls="--")
-    ax.text(35.2, 31.8, "optimistic (S2), pessimistic (S3)", fontsize=8.5, color="#333333")
+    ax.text(33.5, 25.2, "consensus parameters (S1)", fontsize=9, color="#333333", ha="center")
+    arrow(34.0, 35, 34.0, 29, style="-", ls="--")
+    arrow(34.0, 29, 54.0, 29, ls="--")
+    ax.text(35.0, 29.7, "dissent parameters\n(S2, S3)", fontsize=9, color="#333333",
+            ha="left", va="bottom", linespacing=1.1)
 
     box(28, 3, 48, 9, "Reform-reproduction check",
         "Model structure checked against 5 published delivery reforms", fc=C_DATA, fs=9)
@@ -184,28 +188,30 @@ def fig2_validation():
     ax1.legend([plt.Rectangle((0, 0), 1, 1, color="#d9d9d9"),
                 plt.Line2D([0], [0], marker="o", color="#1f77b4", linestyle="-")],
                ["Published benchmark range", "Simulated status quo (95% UI)"],
-               loc="lower right")
+               loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=2, frameon=False)
 
     labels = [f"{r}: {o}" for r, o, *_ in BACKTEST]
     for i, (_, _, obs, olo, ohi, sim_v, slo, shi) in enumerate(BACKTEST):
-        ax2.plot([slo, shi], [i, i], color="#9ecae1", alpha=0.9, linewidth=6, zorder=1)
-        ax2.plot(sim_v, i, "o", color="#1f77b4", markersize=6, zorder=3)
-        ax2.errorbar(obs, i, xerr=[[obs - olo], [ohi - obs]], fmt="D", color="#d62728",
+        ax2.plot([slo, shi], [i - 0.17, i - 0.17], color="#9ecae1", alpha=0.9, linewidth=6, zorder=1)
+        ax2.plot(sim_v, i - 0.17, "o", color="#1f77b4", markersize=6, zorder=3)
+        ax2.errorbar(obs, i + 0.17, xerr=[[obs - olo], [ohi - obs]], fmt="D", color="#d62728",
                      capsize=3, markersize=6, markeredgecolor="black",
                      markeredgewidth=0.4, zorder=4)
     ax2.set_yticks(range(len(labels)))
     ax2.set_yticklabels(labels, fontsize=9)
+    ax2.invert_yaxis()  # first reform at the top, as in eTable 8
     ax2.axvline(0, color="black", linewidth=0.8, linestyle="--")
     ax2.set_xlabel("Percent change versus comparator")
-    ax2.set_title("Panel B: Backtesting against 5 natural experiments\n"
-                  "(15 of 15 observed effects within the simulated 95% UI)")
+    n_in = sum(slo <= obs <= shi for _, _, obs, _, _, _, slo, shi in BACKTEST)
+    ax2.set_title("Panel B: Reform-reproduction check against 5 published reforms\n"
+                  f"(observed effect within the simulated 95% UI in {n_in} of {len(BACKTEST)})")
     ax2.legend([plt.Line2D([0], [0], color="#9ecae1", linewidth=6),
                 plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="#1f77b4",
                            markersize=8),
                 plt.Line2D([0], [0], marker="D", color="w", markerfacecolor="#d62728",
                            markeredgecolor="black", markersize=8)],
                ["Simulated 95% UI", "Simulated mean", "Observed (95% CI)"],
-               loc="lower right", fontsize=9)
+               loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=3, frameon=False)
     fig.tight_layout()
     fig.savefig(FIGDIR / "Fig2.png", bbox_inches="tight", dpi=300)
     plt.close(fig)
@@ -233,7 +239,7 @@ def fig3_admin_prob():
                label="AI ACO target (3.0%)")
     ax.set_xlabel("AI ACO administrative overhead (% of premium)")
     ax.set_ylabel("Probability of net PMPM savings (%)")
-    ax.set_ylim(0, 104)
+    ax.set_ylim(-3, 104)
     ax.set_xlim(1.8, 10.2)
     handles, labs = ax.get_legend_handles_labels()
     order = [labs.index(x) for x in [
@@ -266,7 +272,6 @@ def efig1_convergence():
     cb = fig.colorbar(im, ax=ax)
     cb.set_label("Coefficient of variation")
     cb.ax.plot([0, 1], [0.15, 0.15], color="black", linestyle="--", linewidth=1.6)
-    cb.ax.text(1.9, 0.15, "0.15 threshold", va="center", fontsize=9, rotation=90)
     fig.tight_layout()
     fig.savefig(FIGDIR / "eFig1.png", bbox_inches="tight", dpi=300)
     plt.close(fig)
@@ -319,7 +324,7 @@ def efig3_welfare():
     thin = 0.03 * span
     for label, val in steps:
         ax.bar(label, val, bottom=cum, color="#1f77b4" if val >= 0 else "#d62728")
-        txt = f"${val:.0f}" if val >= 0 else f"−${abs(val):.0f}"
+        txt = f"${val:,.0f}" if val >= 0 else f"−${abs(val):,.0f}"
         if abs(val) >= thin:
             ax.text(label, cum + val / 2, txt, ha="center", va="center",
                     color="white", fontsize=11)
@@ -329,10 +334,11 @@ def efig3_welfare():
         cum += val
         tops.append(max(cum, cum - val))
     ax.bar("Net social\nsurplus", cum, color="#2ca02c")
-    ax.text("Net social\nsurplus", cum / 2, f"${cum:.0f}", ha="center", va="center",
+    ax.text("Net social\nsurplus", cum / 2, f"${cum:,.0f}", ha="center", va="center",
             color="white", fontweight="bold", fontsize=12)
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_ylabel("Per member per year ($)")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.StrMethodFormatter("${x:,.0f}"))
     lows = []
     c = 0.0
     for _, v in steps:
@@ -348,7 +354,7 @@ def efig3_welfare():
 def efig4_radar():
     sc = CANON["scenarios"]
     dims = ["Hosp\nreduction", "ED\nreduction", "HEDIS\nimprovement",
-            "Engagement", "Cost\nreduction", "Admin\nefficiency"]
+            "Engagement", "Net cost\nreduction", "Admin\nefficiency"]
 
     def vec(s):
         base = sc["sq_mco"]
@@ -387,6 +393,7 @@ def efig4_radar():
     ax.set_ylim(floor, max(max(vec(s)) for s, *_ in series) * 1.12)
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(dims, fontsize=10)
+    ax.tick_params(axis="x", pad=16)
     ax.set_yticklabels([])
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.06), ncol=2, frameon=False)
     fig.tight_layout()
